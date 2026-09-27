@@ -3,7 +3,6 @@
 import { useState } from "react";
 import BookingModal from "@/components/ui/BookingModal";
 
-// Inline Plus icon
 function PlusIcon({ className }: { className?: string }) {
   return (
     <svg
@@ -18,7 +17,6 @@ function PlusIcon({ className }: { className?: string }) {
   );
 }
 
-// Inline Minus icon
 function MinusIcon({ className }: { className?: string }) {
   return (
     <svg
@@ -128,14 +126,13 @@ export default function FAQSection() {
                     </span>
                     <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-slate-300 text-slate-700 transition-colors hover:bg-slate-50">
                       {isOpen ? (
-                        <MinusIcon className="h-4 w-4 text-blue-600"/>
+                        <MinusIcon className="h-4 w-4 text-blue-600" />
                       ) : (
-                        <PlusIcon className="h-4 w-4"/>
+                        <PlusIcon className="h-4 w-4" />
                       )}
                     </span>
                   </button>
 
-                  {/* Animated Accordion Content */}
                   <div
                     className={`grid transition-all duration-300 ease-in-out ${
                       isOpen
@@ -157,8 +154,10 @@ export default function FAQSection() {
         </div>
       </section>
 
-      {/* Booking Modal Callout */}
-      <BookingModal isOpen="{isBookingOpen}" onClose="{()"> setIsBookingOpen(false)}
+      {/* Booking Modal */}
+      <BookingModal
+        isOpen={isBookingOpen}
+        onClose={() => setIsBookingOpen(false)}
         preSelectedOptionId={null}
       />
     </>
