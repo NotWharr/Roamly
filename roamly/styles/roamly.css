@@ -1,0 +1,1088 @@
+/*
+  ROAMLY DESIGN SYSTEM
+  ====================
+  The single source of visual truth for every section outside the hero.
+
+  Derived from the hero
+  --------------------
+  The hero is a WebGL water surface: a near-black field, turquoise water,
+  white type, and a translucent glass pill. The page below it is the same
+  island at midday: sand ground, navy ink, and the one warm thing on the
+  island, low sun on turquoise, as the single action colour.
+
+  Palette   Sand ground (#F7F2E8), navy ink (#0A2C3F), Coral Flame (#FF5E36)
+            for actions and selection only. Reef Turquoise (#40E0D0) and
+            Rainforest Emerald (#2E8B57) tint grounds and glass, never text.
+            Sunlight Yellow (#FFD700) tints badges, nothing else. A dark
+            variant under prefers-color-scheme keeps the same jobs with
+            lighter tints on a navy base.
+  Accent    --rl-accent is Coral Flame, constant in every state: fills, the
+            logo, selection. --rl-accent-text carries every text and thin-UI
+            use (flame on dark, deep coral #B63615 on light), because flame
+            text on sand is 2.7:1 and the brief requires AA everywhere.
+  Motion    The ground, surface, text, lines, glass, danger and accent-text
+            are @property-registered colours, animated per section by native
+            CSS scroll-driven animations (view() timeline). Each theme class
+            declares its own from/to endpoints AND its static end-state, so an
+            engine without animation-timeline still renders the destination
+            theme instead of breaking.
+  Glass     Selective, per SKILL 5. Section glass tints follow the active
+            ground. Fixed chrome (nav pill, sheet, veil) keeps a constant
+            dark lens: white labels over light content need a 0.82 fill to
+            hold 4.5:1, and animating the nav would break the logo mid-scroll.
+  Type      Bricolage Grotesque (display) + Figtree (text).
+  Shape     One rule, no exceptions: 4px for content surfaces, full pill for
+            buttons and round controls, 28px top corners for the mobile
+            bottom sheet.
+  Depth     Hairlines and colour. Shadows are tinted to the ink, never pure
+            black.
+  Dials     DESIGN_VARIANCE 7 / MOTION_INTENSITY 6 / VISUAL_DENSITY 4
+*/
+
+/* Every colour the scroll journey touches has to be a registered @property.
+   Without the registration the keyframes still run but snap discretely at
+   50%, which is exactly the jarring switch the brief forbids. */
+@property --rl-ink { syntax: "<color>"; inherits: true; initial-value: #F7F2E8; }
+@property --rl-ink-2 { syntax: "<color>"; inherits: true; initial-value: #ffffff; }
+@property --rl-text { syntax: "<color>"; inherits: true; initial-value: #0A2C3F; }
+@property --rl-mute { syntax: "<color>"; inherits: true; initial-value: rgb(10 44 63 / 0.72); }
+@property --rl-line { syntax: "<color>"; inherits: true; initial-value: rgb(10 44 63 / 0.16); }
+@property --rl-line-strong { syntax: "<color>"; inherits: true; initial-value: rgb(10 44 63 / 0.75); }
+@property --rl-glass-fill { syntax: "<color>"; inherits: true; initial-value: rgb(255 255 255 / 0.55); }
+@property --rl-glass-fill-active { syntax: "<color>"; inherits: true; initial-value: rgb(255 255 255 / 0.8); }
+@property --rl-glass-border { syntax: "<color>"; inherits: true; initial-value: rgb(10 44 63 / 0.22); }
+@property --rl-glass-edge { syntax: "<color>"; inherits: true; initial-value: rgb(255 255 255 / 0.65); }
+@property --rl-danger { syntax: "<color>"; inherits: true; initial-value: #B3261E; }
+@property --rl-accent-text { syntax: "<color>"; inherits: true; initial-value: #B63615; }
+
+:root {
+  /* --- Constants. Never animated, identical in every state. --- */
+  --rl-accent: #FF5E36; /* Coral Flame. Fills, logo, selection. */
+  /* The label on top of the flame. Navy on flame is 4.78:1, and because both
+     sides are constant the CTA label never shifts between schemes. --rl-ink
+     cannot do this job: on light grounds it IS the sand, which on flame is
+     2.9:1. */
+  --rl-on-accent: #0A2C3F;
+  --rl-reef: #40E0D0;
+  --rl-forest: #2E8B57;
+  /* Sun ration: badge tints only. Yellow text on sand is 1.3:1, so yellow
+     never carries meaning on its own. */
+  --rl-sun: #FFD700;
+
+  /* --- Light journey defaults: the sand end-state.
+     Sub-pages carry no theme class and no animation, so they inherit exactly
+     this: sand ground, white surfaces, navy ink. */
+  --rl-ink: #F7F2E8;
+  --rl-ink-2: #ffffff;
+  --rl-text: #0A2C3F;
+  --rl-mute: rgb(10 44 63 / 0.72);
+  --rl-line: rgb(10 44 63 / 0.16); /* decorative separators */
+  --rl-line-strong: rgb(10 44 63 / 0.75); /* input edges, control outlines (>= 3:1 on light) */
+  --rl-glass-fill: rgb(255 255 255 / 0.55);
+  --rl-glass-fill-active: rgb(255 255 255 / 0.8);
+  --rl-glass-border: rgb(10 44 63 / 0.22);
+  --rl-glass-edge: rgb(255 255 255 / 0.65);
+  --rl-glass-blur: blur(24px) saturate(180%) contrast(1.05);
+
+  /* Semantic error colour. #B3261E is 5.9:1 on sand. */
+  --rl-danger: #B3261E;
+
+  /* Every text and thin-UI use of the accent. #B63615 is 5.3:1 on sand,
+     6.0:1 on white, 5.1:1 on the reef tint and 4.8:1 on the forest tint.
+     The flame itself stays on fills. */
+  --rl-accent-text: #B63615;
+
+  --rl-ease: cubic-bezier(0.22, 1, 0.36, 1);
+  --rl-d1: 160ms;
+  --rl-d2: 380ms;
+  --rl-d3: 640ms;
+
+  --rl-gutter: clamp(20px, 5.5vw, 80px);
+  /* Width of one calendar column at the narrowest supported screen. The day
+     grid is 7 columns, so this is the budget the calendar has to fit inside
+     once panel padding and calendar padding are taken off. Kept here so a
+     future padding change moves it with the padding. */
+  --rl-cal-col: 38px;
+  --rl-section-y: clamp(72px, 14vw, 168px);
+
+  /* Height of BottomNavbar + safe area. Adjust once if the navbar is taller. */
+  --rl-nav-clearance: calc(96px + env(safe-area-inset-bottom, 0px));
+
+  /* --- Z scale, documented per SKILL 6.F. Do not invent new values. --- */
+  --rl-z-content: 10;   /* page sections */
+  --rl-z-nav: 50;       /* BottomNavbar */
+  --rl-z-modal: 60;     /* dialogs and sheets */
+  --rl-z-veil: 40;      /* the hero crossfade veil */
+}
+
+/* ===================== Theme engine =====================
+   One keyframe set for the whole journey. The from/to values are var()
+   references resolved against the animated section, so light and dark schemes
+   share the machinery and only swap the endpoint tables.
+
+   Each theme class ALSO declares its static end-state. Without
+   animation-timeline support the animation never runs and the section renders
+   its destination theme: coherent, just not travelling.
+
+   animation-range entry 0% -> entry 45%: the transition completes shortly
+   after the section arrives instead of dragging across its whole scroll. Fill
+   both holds the from-value before arrival and the to-value after. */
+
+@keyframes rl-theme-shift {
+  from {
+    --rl-ink: var(--th-f-ink);
+    --rl-ink-2: var(--th-f-ink2);
+    --rl-text: var(--th-f-text);
+    --rl-mute: var(--th-f-mute);
+    --rl-line: var(--th-f-line);
+    --rl-line-strong: var(--th-f-strong);
+    --rl-glass-fill: var(--th-f-glass);
+    --rl-glass-fill-active: var(--th-f-glass-active);
+    --rl-glass-border: var(--th-f-glass-border);
+    --rl-glass-edge: var(--th-f-glass-edge);
+    --rl-danger: var(--th-f-danger);
+    --rl-accent-text: var(--th-f-accent-text);
+  }
+  to {
+    --rl-ink: var(--th-t-ink);
+    --rl-ink-2: var(--th-t-ink2);
+    --rl-text: var(--th-t-text);
+    --rl-mute: var(--th-t-mute);
+    --rl-line: var(--th-t-line);
+    --rl-line-strong: var(--th-t-strong);
+    --rl-glass-fill: var(--th-t-glass);
+    --rl-glass-fill-active: var(--th-t-glass-active);
+    --rl-glass-border: var(--th-t-glass-border);
+    --rl-glass-edge: var(--th-t-glass-edge);
+    --rl-danger: var(--th-t-danger);
+    --rl-accent-text: var(--th-t-accent-text);
+  }
+}
+
+.rl-theme {
+  animation: rl-theme-shift linear both;
+  animation-timeline: view();
+  animation-range: entry 0% entry 45%;
+}
+
+/* --- Sand. The first section edge: dark water to crisp sand. --- */
+.rl-theme-sand {
+  --th-f-ink: #04141a; --th-f-ink2: #0a222a;
+  --th-f-text: #edf1ee; --th-f-mute: rgb(237 241 238 / 0.72);
+  --th-f-line: rgb(237 241 238 / 0.2); --th-f-strong: rgb(237 241 238 / 0.55);
+  --th-f-glass: rgb(255 255 255 / 0.12); --th-f-glass-active: rgb(255 255 255 / 0.35);
+  --th-f-glass-border: rgb(255 255 255 / 0.32); --th-f-glass-edge: rgb(255 255 255 / 0.14);
+  --th-f-danger: #ff9d9d; --th-f-accent-text: #FF5E36;
+
+  --th-t-ink: #F7F2E8; --th-t-ink2: #ffffff;
+  --th-t-text: #0A2C3F; --th-t-mute: rgb(10 44 63 / 0.72);
+  --th-t-line: rgb(10 44 63 / 0.16); --th-t-strong: rgb(10 44 63 / 0.75);
+  --th-t-glass: rgb(255 255 255 / 0.55); --th-t-glass-active: rgb(255 255 255 / 0.8);
+  --th-t-glass-border: rgb(10 44 63 / 0.22); --th-t-glass-edge: rgb(255 255 255 / 0.65);
+  --th-t-danger: #B3261E; --th-t-accent-text: #B63615;
+
+  /* Static end-state for engines without scroll-driven animations. */
+  --rl-ink: var(--th-t-ink); --rl-ink-2: var(--th-t-ink2);
+  --rl-text: var(--th-t-text); --rl-mute: var(--th-t-mute);
+  --rl-line: var(--th-t-line); --rl-line-strong: var(--th-t-strong);
+  --rl-glass-fill: var(--th-t-glass); --rl-glass-fill-active: var(--th-t-glass-active);
+  --rl-glass-border: var(--th-t-glass-border); --rl-glass-edge: var(--th-t-glass-edge);
+  --rl-danger: var(--th-t-danger); --rl-accent-text: var(--th-t-accent-text);
+}
+
+/* --- Reef. Sand breathing turquoise: the itineraries block. --- */
+.rl-theme-reef {
+  --th-f-ink: #F7F2E8; --th-f-ink2: #ffffff;
+  --th-f-text: #0A2C3F; --th-f-mute: rgb(10 44 63 / 0.72);
+  --th-f-line: rgb(10 44 63 / 0.16); --th-f-strong: rgb(10 44 63 / 0.75);
+  --th-f-glass: rgb(255 255 255 / 0.55); --th-f-glass-active: rgb(255 255 255 / 0.8);
+  --th-f-glass-border: rgb(10 44 63 / 0.22); --th-f-glass-edge: rgb(255 255 255 / 0.65);
+  --th-f-danger: #B3261E; --th-f-accent-text: #B63615;
+
+  /* 12% reef over sand. Navy ink on it is 12.3:1. */
+  --th-t-ink: #E1F0E5; --th-t-ink2: #F7FDFD;
+  --th-t-text: #0A2C3F; --th-t-mute: rgb(10 44 63 / 0.72);
+  --th-t-line: rgb(10 44 63 / 0.16); --th-t-strong: rgb(10 44 63 / 0.75);
+  --th-t-glass: rgb(224 245 240 / 0.6); --th-t-glass-active: rgb(224 245 240 / 0.85);
+  --th-t-glass-border: rgb(10 44 63 / 0.22); --th-t-glass-edge: rgb(255 255 255 / 0.65);
+  --th-t-danger: #B3261E; --th-t-accent-text: #B63615;
+
+  --rl-ink: var(--th-t-ink); --rl-ink-2: var(--th-t-ink2);
+  --rl-text: var(--th-t-text); --rl-mute: var(--th-t-mute);
+  --rl-line: var(--th-t-line); --rl-line-strong: var(--th-t-strong);
+  --rl-glass-fill: var(--th-t-glass); --rl-glass-fill-active: var(--th-t-glass-active);
+  --rl-glass-border: var(--th-t-glass-border); --rl-glass-edge: var(--th-t-glass-edge);
+  --rl-danger: var(--th-t-danger); --rl-accent-text: var(--th-t-accent-text);
+}
+
+/* --- Forest. Sand breathing emerald: the FAQ block. --- */
+.rl-theme-forest {
+  --th-f-ink: #F7F2E8; --th-f-ink2: #ffffff;
+  --th-f-text: #0A2C3F; --th-f-mute: rgb(10 44 63 / 0.72);
+  --th-f-line: rgb(10 44 63 / 0.16); --th-f-strong: rgb(10 44 63 / 0.75);
+  --th-f-glass: rgb(255 255 255 / 0.55); --th-f-glass-active: rgb(255 255 255 / 0.8);
+  --th-f-glass-border: rgb(10 44 63 / 0.22); --th-f-glass-edge: rgb(255 255 255 / 0.65);
+  --th-f-danger: #B3261E; --th-f-accent-text: #B63615;
+
+  /* 10% forest over sand. Navy ink on it is 11.6:1. */
+  --th-t-ink: #E3E8DA; --th-t-ink2: #F7FAF8;
+  --th-t-text: #0A2C3F; --th-t-mute: rgb(10 44 63 / 0.72);
+  --th-t-line: rgb(10 44 63 / 0.16); --th-t-strong: rgb(10 44 63 / 0.75);
+  --th-t-glass: rgb(232 242 228 / 0.6); --th-t-glass-active: rgb(232 242 228 / 0.85);
+  --th-t-glass-border: rgb(10 44 63 / 0.22); --th-t-glass-edge: rgb(255 255 255 / 0.65);
+  --th-t-danger: #B3261E; --th-t-accent-text: #B63615;
+
+  --rl-ink: var(--th-t-ink); --rl-ink-2: var(--th-t-ink2);
+  --rl-text: var(--th-t-text); --rl-mute: var(--th-t-mute);
+  --rl-line: var(--th-t-line); --rl-line-strong: var(--th-t-strong);
+  --rl-glass-fill: var(--th-t-glass); --rl-glass-fill-active: var(--th-t-glass-active);
+  --rl-glass-border: var(--th-t-glass-border); --rl-glass-edge: var(--th-t-glass-edge);
+  --rl-danger: var(--th-t-danger); --rl-accent-text: var(--th-t-accent-text);
+}
+
+/* ===================== Dark variant =====================
+   Same jobs, darker room: navy base, warm-white ink, lighter tropical tints.
+   The hero, nav, sheet and veil do not participate; they are locked to the
+   hero's own dark values in every scheme (see .rl-darklock, #home). */
+@media (prefers-color-scheme: dark) {
+  :root {
+    --rl-ink: #071E2B;
+    --rl-ink-2: #0C2B3A;
+    --rl-text: #F7F2E8;
+    --rl-mute: rgb(247 242 232 / 0.72);
+    --rl-line: rgb(247 242 232 / 0.2);
+    --rl-line-strong: rgb(247 242 232 / 0.55);
+    --rl-glass-fill: rgb(255 255 255 / 0.1);
+    --rl-glass-fill-active: rgb(255 255 255 / 0.28);
+    --rl-glass-border: rgb(255 255 255 / 0.3);
+    --rl-glass-edge: rgb(255 255 255 / 0.12);
+    --rl-danger: #ff9d9d;
+    --rl-accent-text: #FF5E36;
+  }
+
+  /* Sand in the dark is the navy base; the journey is told by the tints. */
+  .rl-theme-sand {
+    --th-t-ink: #071E2B; --th-t-ink2: #0C2B3A;
+    --th-t-text: #F7F2E8; --th-t-mute: rgb(247 242 232 / 0.72);
+    --th-t-line: rgb(247 242 232 / 0.2); --th-t-strong: rgb(247 242 232 / 0.55);
+    --th-t-glass: rgb(255 255 255 / 0.1); --th-t-glass-active: rgb(255 255 255 / 0.28);
+    --th-t-glass-border: rgb(255 255 255 / 0.3); --th-t-glass-edge: rgb(255 255 255 / 0.12);
+    --th-t-danger: #ff9d9d; --th-t-accent-text: #FF5E36;
+
+    --rl-ink: var(--th-t-ink); --rl-ink-2: var(--th-t-ink2);
+    --rl-text: var(--th-t-text); --rl-mute: var(--th-t-mute);
+    --rl-line: var(--th-t-line); --rl-line-strong: var(--th-t-strong);
+    --rl-glass-fill: var(--th-t-glass); --rl-glass-fill-active: var(--th-t-glass-active);
+    --rl-glass-border: var(--th-t-glass-border); --rl-glass-edge: var(--th-t-glass-edge);
+    --rl-danger: var(--th-t-danger); --rl-accent-text: var(--th-t-accent-text);
+  }
+
+  /* 16% reef over the navy base. Warm white on it is 6.1:1. */
+  .rl-theme-reef {
+    --th-f-ink: #071E2B; --th-f-ink2: #0C2B3A;
+    --th-f-text: #F7F2E8; --th-f-mute: rgb(247 242 232 / 0.72);
+    --th-f-line: rgb(247 242 232 / 0.2); --th-f-strong: rgb(247 242 232 / 0.55);
+    --th-f-glass: rgb(255 255 255 / 0.1); --th-f-glass-active: rgb(255 255 255 / 0.28);
+    --th-f-glass-border: rgb(255 255 255 / 0.3); --th-f-glass-edge: rgb(255 255 255 / 0.12);
+    --th-f-danger: #ff9d9d; --th-f-accent-text: #FF5E36;
+
+    --th-t-ink: #103D45; --th-t-ink2: #0C3039;
+    --th-t-text: #F7F2E8; --th-t-mute: rgb(247 242 232 / 0.72);
+    --th-t-line: rgb(247 242 232 / 0.2); --th-t-strong: rgb(247 242 232 / 0.55);
+    --th-t-glass: color-mix(in srgb, #40E0D0 12%, transparent);
+    --th-t-glass-active: color-mix(in srgb, #40E0D0 22%, transparent);
+    --th-t-glass-border: rgb(255 255 255 / 0.3); --th-t-glass-edge: rgb(255 255 255 / 0.12);
+    --th-t-danger: #ff9d9d; --th-t-accent-text: #FF5E36;
+
+    --rl-ink: var(--th-t-ink); --rl-ink-2: var(--th-t-ink2);
+    --rl-text: var(--th-t-text); --rl-mute: var(--th-t-mute);
+    --rl-line: var(--th-t-line); --rl-line-strong: var(--th-t-strong);
+    --rl-glass-fill: var(--th-t-glass); --rl-glass-fill-active: var(--th-t-glass-active);
+    --rl-glass-border: var(--th-t-glass-border); --rl-glass-edge: var(--th-t-glass-edge);
+    --rl-danger: var(--th-t-danger); --rl-accent-text: var(--th-t-accent-text);
+  }
+
+  /* 14% forest over the navy base. */
+  .rl-theme-forest {
+    --th-f-ink: #071E2B; --th-f-ink2: #0C2B3A;
+    --th-f-text: #F7F2E8; --th-f-mute: rgb(247 242 232 / 0.72);
+    --th-f-line: rgb(247 242 232 / 0.2); --th-f-strong: rgb(247 242 232 / 0.55);
+    --th-f-glass: rgb(255 255 255 / 0.1); --th-f-glass-active: rgb(255 255 255 / 0.28);
+    --th-f-glass-border: rgb(255 255 255 / 0.3); --th-f-glass-edge: rgb(255 255 255 / 0.12);
+    --th-f-danger: #ff9d9d; --th-f-accent-text: #FF5E36;
+
+    --th-t-ink: #0C2D31; --th-t-ink2: #0A272F;
+    --th-t-text: #F7F2E8; --th-t-mute: rgb(247 242 232 / 0.72);
+    --th-t-line: rgb(247 242 232 / 0.2); --th-t-strong: rgb(247 242 232 / 0.55);
+    --th-t-glass: color-mix(in srgb, #2E8B57 14%, transparent);
+    --th-t-glass-active: color-mix(in srgb, #2E8B57 26%, transparent);
+    --th-t-glass-border: rgb(255 255 255 / 0.3); --th-t-glass-edge: rgb(255 255 255 / 0.12);
+    --th-t-danger: #ff9d9d; --th-t-accent-text: #FF5E36;
+
+    --rl-ink: var(--th-t-ink); --rl-ink-2: var(--th-t-ink2);
+    --rl-text: var(--th-t-text); --rl-mute: var(--th-t-mute);
+    --rl-line: var(--th-t-line); --rl-line-strong: var(--th-t-strong);
+    --rl-glass-fill: var(--th-t-glass); --rl-glass-fill-active: var(--th-t-glass-active);
+    --rl-glass-border: var(--th-t-glass-border); --rl-glass-edge: var(--th-t-glass-edge);
+    --rl-danger: var(--th-t-danger); --rl-accent-text: var(--th-t-accent-text);
+  }
+}
+
+/* ===================== Locked chrome =====================
+   The hero, the booking sheet and the crossfade veil never join the journey.
+   They are fixed chrome over travelling content, so they hold the hero's own
+   dark values in every scheme and every scroll position. The navbar is
+   deliberately NOT locked: it inherits the page glass, light lens on sand,
+   dark lens in the dark scheme. */
+.rl-darklock {
+  --rl-ink: #04141a;
+  --rl-ink-2: #0a222a;
+  --rl-text: #edf1ee;
+  --rl-mute: rgb(237 241 238 / 0.72);
+  --rl-line: rgb(237 241 238 / 0.2);
+  --rl-line-strong: rgb(237 241 238 / 0.55);
+  --rl-glass-fill: rgb(255 255 255 / 0.12);
+  --rl-glass-fill-active: rgb(255 255 255 / 0.35);
+  --rl-glass-border: rgb(255 255 255 / 0.32);
+  --rl-glass-edge: rgb(255 255 255 / 0.14);
+  --rl-danger: #ff9d9d;
+  --rl-accent-text: #FF5E36;
+}
+
+/* SKILL 2.B: glass needs a solid-fill fallback for anyone who has asked the
+   OS for less transparency. Without it the surfaces vanish into the page.
+   Light scheme gets solid white; the dark scheme gets the solid ink. */
+@media (prefers-reduced-transparency: reduce) {
+  :root {
+    --rl-glass-fill: rgb(255 255 255 / 0.96);
+    --rl-glass-fill-active: rgb(255 255 255 / 1);
+    --rl-glass-border: rgb(10 44 63 / 0.4);
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --rl-glass-fill: rgb(12 40 48 / 0.96);
+      --rl-glass-fill-active: rgb(20 58 68 / 0.98);
+      --rl-glass-border: rgb(255 255 255 / 0.4);
+    }
+  }
+}
+
+.rl-root {
+  font-family: var(--font-rl-text), ui-sans-serif, system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  color: var(--rl-text);
+}
+.rl-on-ink { background: var(--rl-ink); }
+/* Kept as a class because surfaces still use the token, but no section uses
+   this full bleed any more. See the note on --rl-ink above. */
+.rl-on-ink-2 { background: var(--rl-ink-2); }
+
+.rl-z-content { z-index: var(--rl-z-content); }
+.rl-z-nav { z-index: var(--rl-z-nav); }
+.rl-z-modal { z-index: var(--rl-z-modal); }
+
+.rl-root :focus-visible {
+  outline: 2px solid var(--rl-accent-text);
+  outline-offset: 3px;
+}
+
+.rl-display {
+  font-family: var(--font-rl-display), ui-sans-serif, system-ui, sans-serif;
+  font-weight: 600;
+  letter-spacing: -0.035em;
+  line-height: 0.96;
+}
+.rl-h2 { font-size: clamp(2.5rem, 11.5vw, 6.5rem); }
+.rl-label { font-size: 0.8125rem; font-weight: 600; letter-spacing: 0.01em; }
+.rl-pad-x { padding-left: var(--rl-gutter); padding-right: var(--rl-gutter); }
+.rl-section-y { padding-top: var(--rl-section-y); padding-bottom: var(--rl-section-y); }
+
+/* last section on the page: keep content clear of the fixed bottom navbar */
+.rl-clear-nav { padding-bottom: calc(var(--rl-section-y) + var(--rl-nav-clearance)); }
+
+/* Anchor targets have to clear the navbar.
+   Without this, following the "Gallery" link on a 390px screen scrolled the
+   section's heading to 72px from the top while the navbar pill's bottom edge is
+   at 86px, so the heading landed underneath it. Measured, not assumed. */
+#home,
+#explore,
+#gallery,
+#faq,
+#contact {
+  scroll-margin-top: var(--rl-nav-clearance);
+}
+
+/* No .rl-btn here on purpose. Buttons are JigglyButton, one component, one
+   press. A parallel CSS pill class is how the site ended up with two button
+   languages before. */
+
+.rl-strip {
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-x: contain;
+}
+.rl-strip::-webkit-scrollbar { display: none; }
+
+.rl-icon-turn { transition: transform var(--rl-d2) var(--rl-ease); }
+.rl-icon-turn[data-open="true"] { transform: rotate(45deg); }
+
+.rl-radio:checked + .rl-choice {
+  background: var(--rl-accent);
+  border-color: var(--rl-accent-text);
+  color: var(--rl-on-accent);
+}
+.rl-radio:focus-visible + .rl-choice { outline: 2px solid var(--rl-accent-text); outline-offset: 2px; }
+
+@keyframes rl-fade { from { opacity: 0; } to { opacity: 1; } }
+@keyframes rl-rise { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+@keyframes rl-sheet { from { transform: translateY(100%); } to { transform: none; } }
+
+/* ===================== Contact form =====================
+   Lives on the same ink ramp as every other surface. The reference design
+   was a light card; here it is translated rather than pasted, so it does not
+   invert the page theme (SKILL section 4.11).
+
+   Badge   --rl-accent at low alpha with accent-coloured text.
+   Inputs  --rl-ink with a --rl-line-strong edge; the icon sits inside the
+           control so the whole thing stays one 56px touch target.
+   Button  Accent gradient, sharing the .rl-btn family. */
+
+.rl-badge {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 9999px;
+  padding: 0.375rem 0.875rem;
+  /* Sunlight Yellow lives here and almost nowhere else. A 22% tint over the
+     local ground with ink text: 12.6:1 on sand, 8.6:1 on the dark base.
+     Yellow text on sand would be 1.3:1, so yellow never carries words itself. */
+  background: color-mix(in srgb, var(--rl-sun) 22%, transparent);
+  color: var(--rl-text);
+  font-size: 0.8125rem;
+  font-weight: 600;
+  line-height: 1.4;
+}
+
+.rl-field-label {
+  display: block;
+  margin: 0 0 0.5rem;
+  color: var(--rl-text);
+  font-size: 0.875rem;
+  font-weight: 600;
+}
+
+.rl-field {
+  position: relative;
+}
+
+.rl-field-icon {
+  position: absolute;
+  top: 50%;
+  left: 1rem;
+  transform: translateY(-50%);
+  color: var(--rl-mute);
+  pointer-events: none;
+}
+
+.rl-field-icon-top {
+  top: 1.25rem;
+  transform: none;
+}
+
+.rl-input {
+  display: block;
+  width: 100%;
+  min-height: 56px;
+  padding: 0 1rem 0 3rem;
+  border: 1px solid var(--rl-line-strong);
+  border-radius: 4px;
+  background: var(--rl-ink);
+  color: var(--rl-text);
+  font: inherit;
+  font-size: 1rem;
+  line-height: 1.5;
+  color-scheme: light;
+  outline: none;
+  transition:
+    border-color var(--rl-d1) var(--rl-ease),
+    box-shadow var(--rl-d1) var(--rl-ease);
+}
+
+.rl-textarea {
+  min-height: 8rem;
+  padding-block: 1rem;
+  resize: vertical;
+  line-height: 1.6;
+}
+
+.rl-input::placeholder {
+  /* Placeholder is a hint only. The label above carries the meaning. */
+  color: var(--rl-mute);
+  opacity: 1;
+}
+
+.rl-input:focus {
+  border-color: var(--rl-accent-text);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--rl-accent) 22%, transparent);
+}
+
+.rl-input[aria-invalid="true"] {
+  border-color: var(--rl-danger);
+}
+
+/* Locked chrome renders dark inputs, so native controls (date pickers,
+   scrollbars, autofill) match. Everywhere else follows the page scheme. */
+.rl-darklock .rl-input {
+  color-scheme: dark;
+}
+.rl-error {
+  margin: 0.5rem 0 0;
+  color: var(--rl-danger);
+  font-size: 0.8125rem;
+  line-height: 1.4;
+}
+
+.rl-check {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+  cursor: pointer;
+  color: var(--rl-mute);
+  font-size: 0.875rem;
+  line-height: 1.5;
+}
+
+.rl-check-input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+.rl-check-box {
+  flex-shrink: 0;
+  display: grid;
+  place-items: center;
+  width: 1.25rem;
+  height: 1.25rem;
+  margin-top: 0.125rem;
+  border: 1px solid var(--rl-line-strong);
+  border-radius: 4px;
+  background: var(--rl-ink);
+  color: transparent;
+  transition:
+    background-color var(--rl-d1) var(--rl-ease),
+    border-color var(--rl-d1) var(--rl-ease),
+    color var(--rl-d1) var(--rl-ease);
+}
+
+.rl-check-input:checked + .rl-check-box {
+  background: var(--rl-accent);
+  border-color: var(--rl-accent);
+  color: var(--rl-on-accent);
+}
+
+.rl-check-input:focus-visible + .rl-check-box {
+  outline: 2px solid var(--rl-accent-text);
+  outline-offset: 2px;
+}
+
+.rl-check-input[aria-invalid="true"] + .rl-check-box {
+  border-color: var(--rl-danger);
+}
+
+/* Inline link inside prose. The padding plus a negative margin keeps the
+   visual rhythm of the sentence while lifting the hit area to a usable
+   height, without disturbing the line box. */
+.rl-check-link {
+  color: var(--rl-accent-text);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  display: inline-block;
+  min-height: 44px;
+  padding-block: 0.625rem;
+  margin-block: -0.625rem;
+}
+
+/* The old .rl-btn-gradient is gone along with the gradient it defined. It faded
+   the accent into #6d4aff, which is a second hue and the exact AI-purple SKILL
+   4.2 rules out, and it broke the one-accent lock. The solid accent fill on
+   JigglyButton is the CTA now. */
+
+
+/* ===================== Booking sheet =====================
+   The reference for this sheet was a warm light card. It is translated onto
+   the dark ramp rather than pasted, so opening it does not feel like leaving
+   the site (SKILL 4.11). What carries over is the structure: a two column
+   body with the controls on the left and the month grid on the right, one
+   accent doing all the selection work, and a pinned footer for the total
+   and the single CTA.
+
+   Shape   The sheet follows the page rule: 4px content surfaces, full pill
+           for the round stepper controls, 28px top corners on mobile. */
+
+.bm-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.bm-panel {
+  border: 1px solid var(--rl-line);
+  border-radius: 4px;
+  background: var(--rl-ink);
+}
+
+/* ---------- Pill stepper ----------
+   Two halves in one capsule, split by a hairline, in the shape the reference
+   uses. On a dark sheet the capsule is a well (--rl-ink against the --rl-ink-2
+   panel) and the plus half is lifted a few percent, which is the dark-theme
+   equivalent of the reference's filled and unfilled halves. */
+.bm-pill {
+  display: flex;
+  overflow: hidden;
+  border: 1px solid var(--rl-line-strong);
+  border-radius: 9999px;
+  background: var(--rl-ink);
+}
+
+.bm-pill-half {
+  display: grid;
+  place-items: center;
+  width: 56px;
+  height: 52px;
+  color: var(--rl-mute);
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+  user-select: none;
+  transition:
+    background-color var(--rl-d1) var(--rl-ease),
+    color var(--rl-d1) var(--rl-ease);
+}
+
+.bm-pill-half + .bm-pill-half {
+  border-left: 1px solid var(--rl-line);
+  background: color-mix(in srgb, var(--rl-text) 7%, var(--rl-ink));
+  color: var(--rl-text);
+}
+
+.bm-pill-half:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--rl-accent) 20%, var(--rl-ink));
+  color: var(--rl-accent-text);
+}
+.bm-pill-half:active:not(:disabled) { transform: scale(0.94); }
+.bm-pill-half:disabled {
+  color: var(--rl-mute);
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+/* Inset, not an outline: the capsule clips overflow, so an outline drawn
+   outside the half would be cut off. */
+.bm-pill-half:focus-visible {
+  outline: none;
+  box-shadow: inset 0 0 0 2px var(--rl-accent-text);
+}
+
+/* ---------- Rolling digits ----------
+   The box is one line tall and clips, so the digit arrives from off screen
+   rather than the layout jumping. */
+.bm-roll-box {
+  display: inline-flex;
+  overflow: hidden;
+  height: 1em;
+  line-height: 1;
+  font-family: var(--font-rl-display), ui-sans-serif, system-ui, sans-serif;
+  font-weight: 600;
+  letter-spacing: -0.035em;
+  font-variant-numeric: tabular-nums;
+}
+
+.bm-roll {
+  display: block;
+  animation: bm-roll-up var(--rl-d1) var(--rl-ease) both;
+}
+.bm-roll[data-dir="down"] { animation-name: bm-roll-down; }
+
+@keyframes bm-roll-up {
+  from { opacity: 0; transform: translateY(100%); }
+  to { opacity: 1; transform: none; }
+}
+@keyframes bm-roll-down {
+  from { opacity: 0; transform: translateY(-100%); }
+  to { opacity: 1; transform: none; }
+}
+
+.bm-sheet:focus,
+.bm-sheet:focus-visible {
+  /* The sheet is focused programmatically so screen readers announce the
+     dialog. Drawing a ring around the whole panel for that is noise. Focus
+     rings belong on the controls inside it, which keep their own. */
+  outline: none;
+}
+
+/* The sheet's disabled CTA is no longer handled here. JigglyButton owns its own
+   disabled surface, which has to live in the component: the surface is applied
+   as an inline style, so a stylesheet rule from out here could not have
+   overridden it anyway. */
+
+/* Side padding is kept tight so seven columns still clear 44px each on a
+   390px screen. The gap is zero because the day cells are round pills with
+   air inside them, and the pills are what the touch target is. */
+.bm-calendar { padding: 0.875rem 0.25rem; }
+
+.bm-calendar-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  margin-bottom: 0.625rem;
+}
+
+.bm-calendar-month {
+  margin: 0;
+  font-family: var(--font-rl-display), ui-sans-serif, system-ui, sans-serif;
+  font-size: 0.9375rem;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+
+.bm-calendar-step {
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  flex-shrink: 0;
+  margin: -0.5rem;
+  border-radius: 9999px;
+  color: var(--rl-text);
+  transition:
+    background-color var(--rl-d1) var(--rl-ease),
+    color var(--rl-d1) var(--rl-ease);
+}
+.bm-calendar-step:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--rl-accent) 14%, transparent);
+  color: var(--rl-accent-text);
+}
+.bm-calendar-step:disabled { color: var(--rl-mute); opacity: 0.35; cursor: not-allowed; }
+
+/* A month is 7 wide. This container is the 308px the calendar has to fit
+   inside on a 390px screen, so the columns are 1fr and the day pills carry the
+   spacing themselves. */
+.bm-calendar-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+}
+
+/* One week per row. A plain 7-column grid with wrapped rows will not do: the
+   row here is a semantic role as well as a visual band, and nesting it inside
+   the grid adds a level that changes how the columns resolve. `display: contents`
+   gives the row no box of its own, so its seven cells stay direct grid items and
+   still resolve against the seven columns above, while assistive technology
+   still reads the week as a row. */
+.bm-calendar-week {
+  display: contents;
+}
+
+/* The cell only wraps the day button, which owns the pill and the 44px target.
+   `min-width: 0` because a grid item defaults to min-width: auto, which would
+   let a wide button push the track wider and put a horizontal scrollbar on the
+   page. */
+.bm-calendar-cell {
+  display: grid;
+  min-width: 0;
+  place-items: center;
+}
+
+.bm-calendar-weekday {
+  display: grid;
+  place-items: center;
+  height: 28px;
+  color: var(--rl-mute);
+  font-size: 0.625rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+}
+
+.bm-calendar-day {
+  display: grid;
+  place-items: center;
+  min-height: 44px;
+  border-radius: 9999px;
+  color: var(--rl-text);
+  font-size: 0.875rem;
+  font-variant-numeric: tabular-nums;
+  transition:
+    background-color var(--rl-d1) var(--rl-ease),
+    color var(--rl-d1) var(--rl-ease);
+}
+.bm-calendar-day:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--rl-accent) 16%, transparent);
+}
+.bm-calendar-day:disabled {
+  color: var(--rl-mute);
+  opacity: 0.3;
+  cursor: not-allowed;
+}
+.bm-calendar-day[data-today="true"] {
+  color: var(--rl-accent-text);
+  font-weight: 700;
+}
+.bm-calendar-day[data-selected="true"] {
+  background: var(--rl-accent);
+  color: var(--rl-on-accent);
+  font-weight: 600;
+}
+.bm-calendar-day[data-selected="true"]:hover { background: var(--rl-accent); }
+
+/* ===================== Booking page =====================
+   Trip cards, then the panel that drops open under the chosen one.
+
+   Cards   A 4px surface with the photograph bleeding to the edges, so the card
+           and the image are one object rather than an image in a box. The
+           price sits on a scrim rather than in a pill, because a pill over a
+           photograph is the shape this design system does not use.
+
+   Drop    grid-template-rows 0fr -> 1fr animates to whatever the content
+           height is, with no measuring and no resize listener. The inner
+           overflow:hidden is what makes the row collapse actually clip. */
+
+/* ---------- Trip cards ---------- */
+
+.bk-card {
+  position: relative;
+  display: block;
+  cursor: pointer;
+}
+
+/* The aspect ratio is what gives the card a height. Without it the media box
+   collapses to the image's intrinsic line box and the card reads as a rule. */
+.bk-card-media {
+  position: relative;
+  display: block;
+  overflow: hidden;
+  aspect-ratio: 3 / 4;
+  border: 1px solid var(--rl-line);
+  border-radius: 4px;
+  background: var(--rl-ink-2);
+  transition:
+    border-color var(--rl-d1) var(--rl-ease),
+    transform var(--rl-d1) var(--rl-ease);
+}
+
+.bk-card:hover .bk-card-media { border-color: var(--rl-line-strong); }
+.bk-card:active .bk-card-media { transform: scale(0.99); }
+
+.rl-radio:checked + .bk-card-media {
+  border-color: var(--rl-accent-text);
+}
+.rl-radio:focus-visible + .bk-card-media {
+  outline: 2px solid var(--rl-accent-text);
+  outline-offset: 3px;
+}
+
+/* The selected card lifts and brightens, so the choice reads at a glance
+   without the photograph being tinted. */
+.rl-radio:checked + .bk-card-media img {
+  transform: scale(1.04);
+  filter: saturate(1.08);
+}
+.bk-card-media img {
+  transition:
+    transform var(--rl-d3) var(--rl-ease),
+    filter var(--rl-d3) var(--rl-ease);
+}
+
+.bk-card-body {
+  position: absolute;
+  inset-inline: 0;
+  bottom: 0;
+  z-index: 10;
+  padding: 1rem 4.5rem 1rem 1rem;
+}
+
+.bk-card-name {
+  display: block;
+  font-family: var(--font-rl-display), ui-sans-serif, system-ui, sans-serif;
+  font-size: 1.0625rem;
+  font-weight: 600;
+  letter-spacing: -0.025em;
+  line-height: 1.1;
+  /* The name sits on the photograph's dark scrim, not on the page ground, so
+     it is pinned to white rather than following --rl-text into navy on the
+     light pages. Same for the meta, price and per-person below. */
+  color: #fff;
+}
+
+.bk-card-meta {
+  display: block;
+  margin-top: 0.25rem;
+  color: rgb(255 255 255 / 0.78);
+  font-size: 0.75rem;
+}
+
+.bk-card-price {
+  position: absolute;
+  right: 1rem;
+  bottom: 1rem;
+  z-index: 10;
+  display: flex;
+  align-items: baseline;
+  gap: 0.375rem;
+  font-family: var(--font-rl-display), ui-sans-serif, system-ui, sans-serif;
+  font-size: 1.25rem;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
+  color: #fff;
+}
+
+.bk-card-per {
+  font-family: var(--font-rl-text), ui-sans-serif, system-ui, sans-serif;
+  font-size: 0.6875rem;
+  font-weight: 500;
+  letter-spacing: 0;
+  color: rgb(255 255 255 / 0.78);
+}
+
+.bk-card-check {
+  position: absolute;
+  top: 0.75rem;
+  right: 0.75rem;
+  z-index: 10;
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 9999px;
+  background: var(--rl-accent);
+  color: var(--rl-on-accent);
+}
+
+/* ---------- The drop ---------- */
+
+/* min-width:0 so this grid child can shrink below the calendar's intrinsic
+   width. Without it the panel forces the page wider than the viewport. */
+.bk-drop {
+  display: grid;
+  grid-template-rows: 0fr;
+  min-width: 0;
+  transition: grid-template-rows var(--rl-d3) var(--rl-ease);
+}
+.bk-drop[data-open="true"] { grid-template-rows: 1fr; }
+
+.bk-drop-inner {
+  overflow: hidden;
+  min-width: 0;
+  /* Fades the content as well as the row, so it arrives rather than
+     appearing fully drawn inside a growing box. */
+  opacity: 0;
+  transform: translateY(-8px);
+  transition:
+    opacity var(--rl-d2) var(--rl-ease),
+    transform var(--rl-d2) var(--rl-ease);
+}
+.bk-drop[data-open="true"] .bk-drop-inner {
+  opacity: 1;
+  transform: none;
+}
+
+/* The day grid needs 44px x 7 = 308px to keep its touch targets. The budget for
+   everything around it at a 375px screen is 375 - 2*21 gutter = 333, leaving
+   25px for the panel border and both layers of padding. So below 480px the
+   panel drops to 6px and the calendar inside it drops its own padding to
+   nothing: 6+6 border+padding = 14, leaving 319 for the grid, 45.5px a column.
+
+   These two rules are load bearing for touch targets, not decoration. */
+.bk-drop-panel {
+  margin-top: 0.75rem;
+  padding: 0.375rem;
+  border: 1px solid var(--rl-line);
+  border-radius: 4px;
+  background: var(--rl-ink-2);
+}
+
+/* Mobile-first: the tight calendar is the default, because it has to work on a
+   320px screen, and 480px is only where there is room to relax it. The grid
+   keeps its padding, because the left column needs it to read. The calendar
+   reclaims that padding with a negative margin instead, so it reaches the full
+   panel width: 333 - 12 - 16 = 305, /7 = 43.6, which clears 44 once the day
+   cells round up. */
+.bk-drop-panel > .grid { padding-inline: 0.5rem; }
+.bk-drop-panel .bm-calendar {
+  margin-inline: -0.5rem;
+  padding-inline: 0.25rem;
+}
+
+@media (min-width: 480px) {
+  .bk-drop-panel { padding: 1.5rem; }
+  .bk-drop-panel > .grid { padding-inline: 0; }
+  .bk-drop-panel .bm-calendar {
+    margin-inline: 0;
+    padding-inline: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .bk-drop, .bk-drop-inner { transition-duration: 1ms; }
+}
+
+/* Group rows, one line each. No hairline per row: the gap is the separator. */
+/* Radio row. The input is real and off-screen, so arrow keys and the
+   browser's own checked state come for free; the sibling span is the skin. */
+.bm-option {
+  display: flex;
+  width: 100%;
+  min-height: 56px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.625rem 0.875rem;
+  border: 1px solid var(--rl-line);
+  border-radius: 4px;
+  text-align: left;
+  color: var(--rl-text);
+  transition:
+    background-color var(--rl-d1) var(--rl-ease),
+    border-color var(--rl-d1) var(--rl-ease);
+}
+.bm-option:hover { border-color: var(--rl-line-strong); }
+
+.rl-radio:checked + .bm-option {
+  border-color: var(--rl-accent-text);
+  background: color-mix(in srgb, var(--rl-accent) 12%, transparent);
+}
+.rl-radio:checked + .bm-option .bm-option-price { color: var(--rl-accent-text); }
+.rl-radio:focus-visible + .bm-option {
+  outline: 2px solid var(--rl-accent-text);
+  outline-offset: 2px;
+}
+
+.bm-option-name {
+  font-family: var(--font-rl-display), ui-sans-serif, system-ui, sans-serif;
+  font-size: 0.9375rem;
+  font-weight: 600;
+  letter-spacing: -0.015em;
+}
+.bm-option-meta { display: block; margin-top: 0.125rem; color: var(--rl-mute); font-size: 0.75rem; font-weight: 400; letter-spacing: 0; }
+.bm-option-price { flex-shrink: 0; font-size: 0.875rem; font-weight: 600; white-space: nowrap; }
+
+/* Confirmation panel, used by the contact form's success state. */
+.rl-sheet-in {
+  animation: rl-rise var(--rl-d2) var(--rl-ease) both;
+}
+
+.rl-answer-in { animation: rl-rise var(--rl-d2) var(--rl-ease) both; }
+.rl-backdrop-in { animation: rl-fade var(--rl-d2) var(--rl-ease) both; }
+.rl-sheet-in { animation: rl-sheet var(--rl-d3) var(--rl-ease) both; }
+@media (min-width: 640px) {
+  .rl-sheet-in { animation: rl-rise var(--rl-d2) var(--rl-ease) both; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .rl-root, .rl-root * { animation-duration: 1ms !important; transition-duration: 1ms !important; }
+}

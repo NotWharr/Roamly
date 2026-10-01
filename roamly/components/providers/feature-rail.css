@@ -1,0 +1,264 @@
+/* Fluid padding. The fixed 6rem/2rem left a different gutter from every other
+   section on the page, so the rail did not line up with the nav or the
+   sections either side of it. */
+.fr_container {
+  position: relative;
+  width: 100%;
+  max-width: 1320px;
+  margin: 0 auto;
+  /* Mobile-first: no top padding, because on a phone the rail is a sticky bar
+     that has to sit flush under the navbar rather than float in dead space.
+     The desktop query restores the full section padding. */
+  padding: 0 var(--rl-gutter);
+  color: var(--rl-text);
+  font-family: inherit;
+}
+
+.fr_layout {
+  display: flex;
+  flex-direction: column;
+  gap: 4rem;
+}
+
+/* Rail Wrapper & Sticky Configuration
+   Mobile-first: on a phone the chapter rail is a sticky horizontal bar, because
+   three chapter names stacked vertically would push the first chapter off the
+   screen and cost a full screen height to reach. The desktop query turns it
+   back into a vertical sticky sidebar. */
+.fr_rail_wrapper {
+  position: sticky;
+  /* Clears the fixed navbar rather than sitting under it, so the chapter names
+     are not hidden behind the brand on arrival. */
+  top: 88px;
+  z-index: 10;
+  background-color: var(--rl-ink-2);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  /* Full-bleed to the screen edge, so the strip reads as a bar rather than a
+     panel floating inside the gutter. */
+  margin: calc(var(--rl-section-y) * -0.35) calc(var(--rl-gutter) * -1) 2rem;
+  padding: 0.75rem var(--rl-gutter);
+  /* Clip so the sticky bar cannot paint a horizontal scrollbar on phones where
+     the rail overflows. */
+  overflow: hidden;
+  border-bottom: 1px solid var(--rl-line);
+}
+
+.fr_rail {
+  position: relative;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 1.5rem;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.fr_rail::-webkit-scrollbar {
+  display: none;
+}
+
+.fr_collection_title {
+  /* The section title is already the page heading on a phone. Repeating it
+     above the chapter names costs a line of the bar for no information. */
+  display: none;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  color: var(--rl-mute);
+  margin-bottom: 0.5rem;
+}
+
+.fr_links {
+  position: relative;
+  display: flex;
+  flex-direction: row;
+  gap: 1.5rem;
+}
+
+/* Hairline Indicator Style */
+.fr_indicator {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 2px;
+  height: 24px;
+  /* The position marker, not a fill: deep coral on sand, flame on the dark
+     base. Flame on sand is 2.7:1, which fails even the 3:1 UI boundary bar. */
+  background-color: var(--rl-accent-text);
+  pointer-events: none;
+  z-index: 2;
+  will-change: transform, width, height;
+}
+
+/* Chapter Navigation Link */
+.fr_link {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  background: none;
+  border: none;
+  /* Horizontal bar, so the targets are tall enough to tap and wide enough not
+     to be missed. 44px minimum on the primary navigation of a phone. */
+  padding: 0.75rem 0;
+  white-space: nowrap;
+  text-align: left;
+  cursor: pointer;
+  font-family: inherit;
+  /* Was #737373, which is 4.2:1 on this background and fails AA for body
+     text. Lifted to the page's own muted token instead. */
+  color: var(--rl-mute);
+  transition: color 0.3s ease;
+}
+
+.fr_link:hover {
+  color: var(--rl-text);
+}
+
+.fr_link:focus-visible {
+  outline: 2px solid var(--rl-accent-text);
+  outline-offset: 3px;
+  border-radius: 4px;
+}
+
+.fr_link.is-active {
+  color: var(--rl-text);
+  font-weight: 500;
+}
+
+/* Was 0.8rem at 70% opacity, which is small and dim for a number that is not
+   carrying meaning on its own. */
+.fr_link_num {
+  font-size: 0.8125rem;
+  font-variant-numeric: tabular-nums;
+  color: var(--rl-accent-text);
+}
+
+.fr_link_text {
+  /* 15px rather than 16px: the horizontal bar has to fit three chapter names
+     on a 390px screen, and the labels are still comfortably legible. */
+  font-size: 0.9375rem;
+}
+
+/* Content Area */
+.fr_content {
+  display: flex;
+  flex-direction: column;
+  gap: clamp(6rem, 18vh, 12rem);
+}
+
+/* min-height was 70vh on every chapter, which meant a short chapter still
+   reserved most of a screen and the scroll-spy fired on empty space. Height is
+   now left to the content, with padding that still gives the section air. */
+.fr_chapter {
+  display: flex;
+  flex-direction: column;
+  gap: 2.5rem;
+  padding-block: clamp(1rem, 4vh, 4rem);
+  scroll-margin-top: 140px;
+}
+
+.fr_chapter_header {
+  max-width: 640px;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.fr_headline {
+  font-family: var(--font-rl-display), ui-sans-serif, system-ui, sans-serif;
+  font-size: clamp(1.875rem, 4vw, 3rem);
+  line-height: 1.12;
+  font-weight: 600;
+  letter-spacing: -0.03em;
+  color: var(--rl-text);
+  text-wrap: balance;
+}
+
+.fr_text {
+  font-size: 1.0625rem;
+  line-height: 1.65;
+  max-width: 62ch;
+  color: var(--rl-mute);
+}
+
+/* Images load and sit still. The entrance clip-path reveal and the scale-down
+   are gone: they cost a scroll listener and a compositor layer per image for
+   an effect that ran once and was over before anyone looked at it. */
+.fr_image_wrapper {
+  position: relative;
+  width: 100%;
+  max-width: 860px;
+  aspect-ratio: 16 / 10;
+  overflow: hidden;
+  border: 1px solid var(--rl-line);
+  border-radius: 4px;
+  background-color: var(--rl-ink-2);
+}
+
+.fr_image {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+/* Tablet and up: the rail becomes a vertical sticky sidebar beside the
+   chapters instead of a bar above them. Everything here un-does a mobile-first
+   base rule, which is the correct shape for an enhancement query: the phone
+   layout is the default, and this block only adds what a wider screen affords. */
+@media (min-width: 768px) {
+  .fr_container {
+    padding-top: var(--rl-section-y);
+  }
+
+  .fr_layout {
+    flex-direction: row;
+    gap: 6rem;
+    align-items: flex-start;
+  }
+
+  .fr_rail_wrapper {
+    top: 8rem;
+    z-index: auto;
+    width: 280px;
+    flex-shrink: 0;
+    background-color: transparent;
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+    margin: 0;
+    padding: 0;
+    overflow: visible;
+    border-bottom: 0;
+  }
+
+  .fr_rail {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 1.5rem;
+    overflow-x: visible;
+  }
+
+  .fr_collection_title {
+    display: block;
+  }
+
+  .fr_links {
+    flex-direction: column;
+    gap: 0.75rem;
+  }
+
+  .fr_link {
+    gap: 1rem;
+    padding: 0.625rem 0 0.625rem 1rem;
+    white-space: normal;
+  }
+
+  .fr_link_text {
+    font-size: 1rem;
+  }
+
+  .fr_content {
+    flex-grow: 1;
+  }
+}

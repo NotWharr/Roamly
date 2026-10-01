@@ -1,26 +1,50 @@
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
+/*
+  Global base styles.
+
+  Colour lives in `styles/roamly.css` (the --rl-* design system) and is not
+  repeated here. This file owns only three things: the font variables, the page
+  background, and the Lenis smooth-scroll rules.
+*/
+
+html {
+  /* Page ground and ink follow the live tokens: sand/navy in the light
+     journey, the navy base in the dark variant, hero-dark inside locked
+     chrome. The --page-* aliases exist so globals never hardcodes a colour. */
+  --page-bg: var(--rl-ink, #F7F2E8);
+  --page-text: var(--rl-text, #0A2C3F);
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+html,
+body {
+  background-color: var(--page-bg);
+  color: var(--page-text);
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
+  transition: color 0.4s ease;
+}
+
+/* Lenis recommended styles */
+html.lenis,
+html.lenis body {
+  height: auto;
+}
+
+.lenis.lenis-smooth {
+  scroll-behavior: auto !important;
+}
+
+.lenis.lenis-smooth [data-lenis-prevent] {
+  overscroll-behavior: contain;
+}
+
+.lenis.lenis-stopped {
+  overflow: hidden;
+}
+
+.lenis.lenis-scrolling iframe {
+  pointer-events: none;
 }

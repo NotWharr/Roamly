@@ -1,139 +1,191 @@
 "use client";
 
-import React, { useState, Suspense } from "react";
+import { Suspense, useMemo, useRef, useState } from "react";
+import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import CheckoutHeader from "@/components/checkout/Header";
-import TravelerInfoForm from "@/components/checkout/TravelerInfoForm";
-import TourSummaryCard from "@/components/checkout/TourSummaryCard";
-import ConfirmationModal from "@/components/checkout/ConfirmationModal";
 
-const tourPackagesMap: Record<string, { title: string; price: number; duration: string }> = {
-  "1": { title: "Summit Sunrise Tour", price: 148.0, duration: "3 Days / 2 Nights Trek" },
-  "2": { title: "Hidden Falls Excursion", price: 95.0, duration: "Full Day (8 Hours)" },
-  "3": { title: "Reef Explorer Snorkel", price: 65.0, duration: "Half Day (4 Hours)" },
+import BackLink from "@/components/layout/BackLink";
+import CheckoutForm from "@/components/checkout/CheckoutForm";
+import OrderSummary from "@/components/checkout/OrderSummary";
+import Confirmation from "@/components/checkout/Confirmation";
+import { readableDate } from "@/lib/calendar";
+import { RULES, quote } from "@/lib/checkout";
+import { findTour } from "@/lib/tours";
+import { rlFonts } from "@/lib/roamlyFonts";
+
+import "@/styles/roamly.css";
+
+/**
+ * Order of the checks, so a submit can send focus to the first thing that is
+ * wrong rather than making the user hunt. This order also matches the visual
+ * order of the form.
+ */
+const FIELD_ORDER = [
+  ["name", RULES.name],
+  ["phone", RULES.phone],
+  ["email", RULES.email],
+  ["card", RULES.card],
+  ["expiry", RULES.expiry],
+  ["cvc", RULES.cvc],
+] as const;
+
+const EMPTY_VALUES: Record<string, string> = {
+  name: "",
+  phone: "",
+  email: "",
+  notes: "",
+  card: "",
+  expiry: "",
+  cvc: "",
 };
 
-function CheckoutContent() {
-  const searchParams = useSearchParams();
+/** A reference for this attempt. Real-looking, and not reused across loads. */
+function makeReference(): string {
+  const digits = Math.floor(Math.random() * 90000) + 10000;
+  return `RL-${digits}`;
+}
 
-  const optionId = searchParams.get("option") || "1";
-  const startDate = searchParams.get("startDate") || "26";
-  const adults = parseInt(searchParams.get("adults") || "2", 10);
-  const children = parseInt(searchParams.get("children") || "0", 10);
+function Checkout() {
+  const params = useSearchParams();
 
-  const activeTour = tourPackagesMap[optionId] || tourPackagesMap["1"];
-  const basePrice = activeTour.price * adults + activeTour.price * 0.5 * children;
-  const taxes = Number((basePrice * 0.2).toFixed(2));
-  const total = basePrice + taxes;
+  const tour = findTour(Number(params.get("option")));
+  const guests = Math.max(1, Number(params.get("adults")) || 1);
+  const children = Math.max(0, Number(params.get("children")) || 0);
+  const iso = params.get("startDate") ?? "";
 
-  const [fullName, setFullName] = useState("");
-  const [email, setEmail] = useState("");
-  const [isProcessing, setIsProcessing] = useState(false);
-  const [showSuccessModal, setShowSuccessModal] = useState(false);
+  // The booking page passes a full date as a query param; a bare day number is
+  // accepted too so an older link still resolves.
+  const dateLabel = /^\d{4}-\d{2}-\d{2}$/.test(iso)
+    ? readableDate(iso)
+    : iso
+      ? readableDate(`${new Date().getFullYear()}-10-${iso.padStart(2, "0")}`)
+      : "Not chosen yet";
 
-  const handleSubmitPayment = (e: React.FormEvent) => {
-    e.preventDefault();
-    setIsProcessing(true);
+  const money = useMemo(
+    () => quote(tour.price, guests, children),
+    [tour.price, guests, children],
+  );
 
-    // Simulate API Payment Processing
-    setTimeout(() => {
-      setIsProcessing(false);
-      setShowSuccessModal(true);
-    }, 1200);
+  const [values, setValues] = useState(EMPTY_VALUES);
+  const [submitted, setSubmitted] = useState(false);
+  const [paying, setPaying] = useState(false);
+  const [confirmed, setConfirmed] = useState<string | null>(null);
+  const referenceRef = useRef(makeReference());
+
+  const errors = useMemo(() => {
+    const out: Record<string, string> = {};
+    for (const [key, rule] of FIELD_ORDER) out[key] = rule(values[key] ?? "");
+    return out;
+  }, [values]);
+
+  // Errors only appear once a submit has been attempted, otherwise the form
+  // greets you in red before you have typed anything.
+  const showError = (key: string) =>
+    submitted ? (errors[key] || "") : "";
+
+  const setValue = (key: string, next: string) =>
+    setValues((prev) => ({ ...prev, [key]: next }));
+
+  const handleSubmit = (event: React.FormEvent) => {
+    event.preventDefault();
+    setSubmitted(true);
+
+    // Send focus to the first field that is wrong, so the user is told where to
+    // look rather than only being told that something is.
+    for (const [key, rule] of FIELD_ORDER) {
+      if (rule(values[key] ?? "")) {
+        document.getElementById(`co-${key}`)?.focus();
+        return;
+      }
+    }
+
+    setPaying(true);
+    window.setTimeout(() => {
+      setPaying(false);
+      setConfirmed(referenceRef.current);
+    }, 900);
   };
 
   return (
-    <div className="min-h-screen bg-slate-100 py-8 px-4 sm:px-6 lg:px-8 font-sans text-slate-800">
-      <div className="mx-auto max-w-6xl">
-        <CheckoutHeader />
+    <main
+      className={`rl-root rl-on-ink rl-z-content relative flex min-h-dvh flex-col px-[length:var(--rl-gutter)] ${rlFonts}`}
+    >
+      <BackLink href="/booking">Back to booking</BackLink>
 
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-          {/* Main Form Area */}
-          <form onSubmit={handleSubmitPayment} className="lg:col-span-8 space-y-6">
-            <TravelerInfoForm
-              tourTitle={activeTour.title}
-              adults={adults}
-              childrenCount={children}
-              fullName={fullName}
-              setFullName={setFullName}
-              email={email}
-              setEmail={setEmail}
-            />
+      <div className="mx-auto flex w-full max-w-5xl flex-1 flex-col pb-16 pt-32 sm:pt-36">
+        <header className="max-w-[44ch]">
+          <h1 className="rl-display text-[clamp(2.25rem,8vw,3.5rem)]">
+            Payment
+          </h1>
 
-            {/* Payment Section */}
-            <div className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm space-y-4">
-              <h2 className="text-lg font-bold text-slate-900">Payment Details</h2>
-              <div className="space-y-3 text-xs">
-                <input
-                  type="text"
-                  required
-                  placeholder="Cardholder Name"
-                  className="w-full rounded-md border border-slate-300 p-2.5 outline-none"
-                />
-                <input
-                  type="text"
-                  required
-                  placeholder="Card Number (•••• •••• •••• ••••)"
-                  className="w-full rounded-md border border-slate-300 p-2.5 outline-none"
-                />
-                <div className="grid grid-cols-2 gap-4">
-                  <input
-                    type="text"
-                    required
-                    placeholder="MM/YY"
-                    className="rounded-md border border-slate-300 p-2.5 outline-none"
-                  />
-                  <input
-                    type="text"
-                    required
-                    placeholder="CVC"
-                    className="rounded-md border border-slate-300 p-2.5 outline-none"
-                  />
-                </div>
-              </div>
-            </div>
+          <p className="mt-4 text-base leading-relaxed text-[var(--rl-mute)]">
+            Who is coming, and how you would like to pay. We hold your place
+            for 24 hours from here.
+          </p>
+        </header>
 
-            <button
-              type="submit"
-              disabled={isProcessing}
-              className="w-full rounded-xl bg-blue-600 py-3.5 text-xs font-bold uppercase tracking-wider text-white shadow-md hover:bg-blue-500 transition disabled:opacity-50"
-            >
-              {isProcessing ? "Processing Payment..." : "Confirm Tour Booking"}
-            </button>
-          </form>
+        <div className="mt-10 grid gap-8 sm:mt-12 lg:grid-cols-[minmax(0,1fr)_22rem] lg:gap-10">
+          <CheckoutForm
+            tourTitle={tour.name}
+            duration={tour.duration}
+            guests={guests}
+            money={money}
+            values={values}
+            errors={errors}
+            showError={showError}
+            setValue={setValue}
+            paying={paying}
+            onSubmit={handleSubmit}
+          />
 
-          {/* Right Sidebar */}
-          <div className="lg:col-span-4">
-            <TourSummaryCard
-              tourTitle={activeTour.title}
-              duration={activeTour.duration}
-              startDate={startDate}
-              adults={adults}
-              childrenCount={children}
-              basePrice={basePrice}
-              taxes={taxes}
-              total={total}
-            />
-          </div>
+          <OrderSummary
+            tourTitle={tour.name}
+            duration={tour.duration}
+            dateLabel={dateLabel}
+            guests={guests}
+            money={money}
+          />
         </div>
+
+        {/*
+          One place for the eye to go when the total is wrong. The booking page
+          shows a different price list, so a mismatch is a live possibility and
+          worth naming rather than leaving the reader to notice.
+        */}
+        <p className="mt-10 text-sm text-[var(--rl-mute)]">
+          Totals are calculated from the shared tour list. If something looks
+          wrong,{" "}
+          <Link href="/terms" className="rl-check-link">
+            check the terms
+          </Link>{" "}
+          or email us before you pay.
+        </p>
       </div>
 
-      {/* Floating Modal */}
-      <ConfirmationModal
-        isOpen={showSuccessModal}
-        email={email}
-        tourTitle={activeTour.title}
-        startDate={startDate}
-        totalAmount={total.toFixed(2)}
+      <Confirmation
+        isOpen={confirmed !== null}
+        email={values.email}
+        tourTitle={tour.name}
+        dateLabel={dateLabel}
+        total={money.total.toFixed(2)}
+        reference={confirmed ?? ""}
       />
-    </div>
+    </main>
   );
 }
 
 export default function CheckoutPage() {
   return (
-    <Suspense fallback={<div className="p-8 text-center text-sm text-slate-500">Loading checkout...</div>}>
-      <CheckoutContent />
+    <Suspense
+      fallback={
+        <main
+          className={`rl-root rl-on-ink flex min-h-dvh items-center justify-center px-[length:var(--rl-gutter)] ${rlFonts}`}
+        >
+          <p className="text-sm text-[var(--rl-mute)]">Loading checkout</p>
+        </main>
+      }
+    >
+      <Checkout />
     </Suspense>
   );
 }
