@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useRef, useMemo } from "react";
+import React, { useEffect, useRef, useMemo, useState } from "react";
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
 import * as THREE from "three";
 
@@ -150,14 +150,20 @@ const waterFragmentShader = `
 // WEBGL SCENE CONTROLLER & MESH
 // ============================================================================
 
-function SimulationPlane({ imageSrc }: { imageSrc: string }) {
+function SimulationPlane({ imageSrc, visibleRef }: { imageSrc: string; visibleRef: React.RefObject<boolean> }) {
   const { gl, viewport } = useThree();
+  const [imageAspect, setImageAspect] = useState(1);
+  const imageAspectRef = useRef(1);
+
+  // Mirror state into the ref from an effect: the per-frame shader update
+  // reads the ref, and refs must not be touched during render.
+  useEffect(() => {
+    imageAspectRef.current = imageAspect;
+  }, [imageAspect]);
   const mouseRef = useRef({ x: 0.5, y: 0.5, prevX: 0.5, prevY: 0.5, down: false, speed: 0 });
   const simMatRef = useRef<THREE.ShaderMaterial | null>(null);
   const dropMatRef = useRef<THREE.ShaderMaterial | null>(null);
   const waterMatRef = useRef<THREE.ShaderMaterial | null>(null);
-  
-  const imageAspectRef = useRef(1);
 
   // Simulation Render Targets (Ping-Pong Buffers)
   const simWidth = 256;
@@ -171,10 +177,11 @@ function SimulationPlane({ imageSrc }: { imageSrc: string }) {
 
   const texture = useMemo(() => {
     const loader = new THREE.TextureLoader();
+    // onLoad fires asynchronously after decode, long after render.
     const tex = loader.load(imageSrc, (loadedTex) => {
       const img = loadedTex.image as HTMLImageElement;
-      if (img) {
-        imageAspectRef.current = img.naturalWidth / img.naturalHeight;
+      if (img?.naturalWidth && img?.naturalHeight) {
+        setImageAspect(img.naturalWidth / img.naturalHeight);
       }
     });
     tex.minFilter = THREE.LinearFilter;
@@ -230,8 +237,12 @@ function SimulationPlane({ imageSrc }: { imageSrc: string }) {
     };
   }, []);
 
-  // Pointer tracking & force injection
+  // Pointer tracking & force injection.
+  // Fine pointers only: touch drag-scroll fires pointermove continuously,
+  // which would inject ripples while scrolling and fight the gesture.
+  // Coarse pointers get ambient ripples only (see the idle timer below).
   useEffect(() => {
+    if (window.matchMedia("(pointer: coarse)").matches) return;
     const handlePointerMove = (e: PointerEvent) => {
       const x = e.clientX / window.innerWidth;
       const y = 1.0 - e.clientY / window.innerHeight;
@@ -251,8 +262,12 @@ function SimulationPlane({ imageSrc }: { imageSrc: string }) {
     return () => window.removeEventListener("pointermove", handlePointerMove);
   }, []);
 
-  // Frame Loop: Ping-Pong Simulation Steps + Water Distort Rendering
+  // Frame Loop: Ping-Pong Simulation Steps + Water Distort Rendering.
+  // Suspends entirely once the hero scrolls out of view (visibleRef is
+  // flipped by the IntersectionObserver in WaterRipple): a fullscreen Canvas
+  // kept mounted under the veil must not shade every frame forever.
   useFrame(() => {
+    if (visibleRef.current === false) return;
     if (!targetA.current || !targetB.current || !quadMesh.current) return;
 
     const renderer = gl;
@@ -334,26 +349,61 @@ function SimulationPlane({ imageSrc }: { imageSrc: string }) {
 
 export default function WaterRipple({ imageSrc }: { imageSrc: string }) {
   const prefersReducedMotion = typeof window !== "undefined" && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  const saveData =
+    typeof navigator !== "undefined" &&
+    "connection" in navigator &&
+    (navigator as Navigator & { connection?: { saveData?: boolean } }).connection?.saveData === true;
 
-  if (prefersReducedMotion) {
+  // Static image when motion is reduced or the user asked for saving data:
+  // a fullscreen fragment shader at dpr 2 is the heaviest paint on the page.
+  if (prefersReducedMotion || saveData) {
     return (
-      <div 
-        className="absolute inset-0 bg-cover bg-center" 
-        style={{ backgroundImage: `url(${imageSrc})` }} 
+      <div
+        className="absolute inset-0 bg-cover bg-center"
+        style={{ backgroundImage: `url(${imageSrc})` }}
       />
     );
   }
 
   return (
-    <div className="absolute inset-0 h-full w-full overflow-hidden pointer-events-auto">
+    <WaterRippleCanvas imageSrc={imageSrc} />
+  );
+}
+
+function WaterRippleCanvas({ imageSrc }: { imageSrc: string }) {
+  const wrapRef = useRef<HTMLDivElement | null>(null);
+  const visibleRef = useRef(true);
+  const coarse =
+    typeof window !== "undefined" && window.matchMedia("(pointer: coarse)").matches;
+
+  // Pause rendering once the hero leaves the viewport.
+  useEffect(() => {
+    const el = wrapRef.current;
+    if (!el) return;
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        visibleRef.current = entry.isIntersecting;
+      },
+      { threshold: 0 }
+    );
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, []);
+
+  return (
+    <div ref={wrapRef} className="absolute inset-0 h-full w-full overflow-hidden pointer-events-none">
       <Canvas
-        gl={{ antialias: true, alpha: false, powerPreference: "high-performance" }}
+        // Low-power + no MSAA on touch GPUs: the water shader is per-pixel
+        // math, not geometry edges, so antialias buys nothing and forces the
+        // high-power GPU on phones. dpr caps at 1.5 on coarse pointers.
+        gl={{ antialias: !coarse, alpha: false, powerPreference: coarse ? "low-power" : "high-performance" }}
         camera={{ position: [0, 0, 5], fov: 50, near: 0.1, far: 100 }}
-        dpr={[1, 2]}
+        dpr={coarse ? [1, 1.5] : [1, 2]}
+        frameloop="always"
         className="h-full w-full"
       >
         <color attach="background" args={["#0a0a0a"]} />
-        <SimulationPlane imageSrc={imageSrc} />
+        <SimulationPlane imageSrc={imageSrc} visibleRef={visibleRef} />
       </Canvas>
     </div>
   );

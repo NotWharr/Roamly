@@ -16,22 +16,24 @@ export default function Hero({ heroRef }: HeroProps) {
   // Keep the local ref as a fallback.
   const resolvedHeroRef = heroRef ?? sectionRef;
 
-  // CTA fade-up, timed to land just after the text reveals
+  // CTA fade-up, timed to land just after the text reveals.
+  // A safety timer forces opacity to 1: if the WAAPI animation is throttled
+  // or interrupted (background tab, low-end Android), the CTA must not stay
+  // invisible. The primary LCP action is never left at opacity 0.
   useEffect(() => {
+    const el = ctaContainerRef.current;
+    if (!el) return;
+
     const prefersReducedMotion = window.matchMedia(
       "(prefers-reduced-motion: reduce)"
     ).matches;
 
     if (prefersReducedMotion) {
-      if (ctaContainerRef.current) {
-        ctaContainerRef.current.style.opacity = "1";
-      }
-
+      el.style.opacity = "1";
       return;
     }
 
-    if (ctaContainerRef.current) {
-      ctaContainerRef.current.animate(
+    const anim = el.animate(
         [
           {
             opacity: 0,
@@ -49,14 +51,28 @@ export default function Hero({ heroRef }: HeroProps) {
           fill: "forwards",
         }
       );
-    }
+    anim.onfinish = () => {
+      el.style.opacity = "1";
+    };
+    // Safety net independent of the animation clock.
+    const fallback = window.setTimeout(() => {
+      el.style.opacity = "1";
+    }, 3600);
+    return () => {
+      window.clearTimeout(fallback);
+      try {
+        anim.cancel();
+      } catch {
+        /* already finished */
+      }
+    };
   }, []);
 
   return (
     <section
       id="home"
       ref={resolvedHeroRef}
-      className="rl-darklock relative flex h-[100svh] min-h-[100dvh] w-full items-center justify-center overflow-hidden text-[var(--rl-text)] select-none"
+      className="rl-darklock relative flex h-[100svh] min-h-[100svh] w-full items-center justify-center overflow-hidden text-[var(--rl-text)] select-none [@supports(height:100dvh)]:h-[100dvh] [@supports(height:100dvh)]:min-h-[100dvh]"
       style={{ background: "var(--rl-ink)" }}
       aria-label="Hero Section"
     >
@@ -78,7 +94,7 @@ export default function Hero({ heroRef }: HeroProps) {
             unstyled
             duration={1.8}
             stagger={0.18}
-            className="max-w-4xl font-sans text-[clamp(2.5rem,7.5vw,5.75rem)] font-black tracking-tight leading-[1.02] text-white [text-shadow:0_4px_32px_rgba(0,0,0,0.5)] pointer-events-auto [&_.split-line]:-my-[0.08em] [&_.split-line]:py-[0.08em]"
+            className="max-w-4xl font-sans text-[clamp(2rem,9vw,5.75rem)] font-black tracking-tight leading-[1.04] text-white [text-shadow:0_4px_32px_rgba(0,0,0,0.5)] pointer-events-auto [&_.split-line]:-my-[0.08em] [&_.split-line]:py-[0.08em]"
           >
             Grenada, on foot and underwater.
           </TextReveal>

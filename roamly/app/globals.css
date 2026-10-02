@@ -9,6 +9,8 @@
 */
 
 html {
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
   /* Page ground and ink follow the live tokens: sand/navy in the light
      journey, the navy base in the dark variant, hero-dark inside locked
      chrome. The --page-* aliases exist so globals never hardcodes a colour. */
@@ -20,11 +22,20 @@ html,
 body {
   background-color: var(--page-bg);
   color: var(--page-text);
+  overscroll-behavior-y: none;
 }
 
 body {
   font-family: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
   transition: color 0.4s ease;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Thumb-first tap targets: coarse pointers get no hover-only affordance. */
+@media (pointer: coarse) {
+  a, button {
+    -webkit-tap-highlight-color: transparent;
+  }
 }
 
 /* Lenis recommended styles */

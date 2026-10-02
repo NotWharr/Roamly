@@ -48,7 +48,7 @@ export default function FAQItem({ entry, isOpen, onToggle }: FAQItemProps) {
         role="region"
         aria-labelledby={buttonId}
         hidden={!isOpen}
-        className="rl-answer-in pb-6 pr-12"
+        className="rl-answer-in pb-6 pr-0 sm:pr-12"
       >
         <p className="max-w-[56ch] text-base leading-relaxed text-[var(--rl-mute)] sm:text-[1.0625rem]">
           {entry.answer}

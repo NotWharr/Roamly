@@ -143,7 +143,7 @@ export default function GallerySection() {
         role="region"
         aria-label="Photo gallery, swipe or scroll sideways"
         tabIndex={0}
-        className="rl-strip rl-pad-x mt-12 flex snap-x snap-mandatory items-start gap-4 overflow-x-auto scroll-px-[var(--rl-gutter)] pb-4 md:mt-16 md:gap-6"
+        className="rl-strip rl-pad-x mt-12 flex snap-x snap-proximity items-start gap-4 overflow-x-auto scroll-px-[var(--rl-gutter)] pb-4 md:mt-16 md:gap-6"
       >
         {GALLERY.map(renderFrame)}
       </div>

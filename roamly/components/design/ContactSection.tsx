@@ -36,7 +36,7 @@ export default function ContactSection() {
         </p>
 
         {/* The arrow comes from withArrow, not from a second icon child. */}
-        <JigglyButton href="/contact" size="hero" withArrow className="mt-10">
+        <JigglyButton href="/contact" size="hero" withArrow className="mt-10 w-full sm:w-auto">
           Start planning
         </JigglyButton>
 

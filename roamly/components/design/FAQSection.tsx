@@ -88,7 +88,7 @@ export default function FAQSection() {
           <div className="lg:col-span-5 lg:row-start-2 lg:self-end">
             {/* The arrow comes from withArrow. Passing an icon as a child too
                 would draw two of them. */}
-            <JigglyButton href="/contact" size="block" withArrow>
+            <JigglyButton href="/contact" size="block" withArrow className="w-full sm:w-auto">
               Ask us something
             </JigglyButton>
           </div>

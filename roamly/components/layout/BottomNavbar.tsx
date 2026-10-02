@@ -102,7 +102,9 @@ export default function BottomNavbar({
   const focusedIndex = useRef<number | null>(null);
   const rafId = useRef<number | null>(null);
 
-  // Direct Hover Spring Animation Loop for Desktop Nav Items
+  // Direct Hover Spring Animation Loop for Desktop Nav Items.
+  // Desktop only: the list is display:none below sm, so running this RAF on
+  // phones is pure battery drain iterating hidden children every frame.
   useEffect(() => {
     const listEl = desktopListRef.current;
     if (!listEl) return;
@@ -110,7 +112,22 @@ export default function BottomNavbar({
     const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
     if (reduceMotion) return;
 
+    const desktopMq = window.matchMedia("(min-width: 640px)");
+    let active = desktopMq.matches;
+
+    const onChange = (e: MediaQueryListEvent) => {
+      active = e.matches;
+      if (active && rafId.current === null) {
+        rafId.current = requestAnimationFrame(loop);
+      }
+    };
+    desktopMq.addEventListener("change", onChange);
+
     const loop = () => {
+      if (!active) {
+        rafId.current = null;
+        return;
+      }
       const items = Array.from(listEl.children) as HTMLElement[];
 
       items.forEach((_, idx) => {
@@ -140,7 +157,9 @@ export default function BottomNavbar({
     rafId.current = requestAnimationFrame(loop);
 
     return () => {
+      desktopMq.removeEventListener("change", onChange);
       if (rafId.current) cancelAnimationFrame(rafId.current);
+      rafId.current = null;
     };
   }, [spring, damping]);
 
@@ -301,6 +320,11 @@ export default function BottomNavbar({
   useEffect(() => {
     if (!menuOpen) return;
 
+    // Lock the page behind the open panel: on touch the page would otherwise
+    // scroll under the menu on any drag outside it.
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") setMenuRef.current?.(false);
     };
@@ -313,6 +337,7 @@ export default function BottomNavbar({
     document.addEventListener("keydown", onKey);
     document.addEventListener("pointerdown", onPointer);
     return () => {
+      document.body.style.overflow = previousOverflow;
       document.removeEventListener("keydown", onKey);
       document.removeEventListener("pointerdown", onPointer);
     };
@@ -447,6 +472,7 @@ export default function BottomNavbar({
             ref={contentRef}
             id={contentId}
             aria-hidden={!menuOpen}
+            data-lenis-prevent
             className="sm:hidden absolute z-0 overflow-y-auto overscroll-contain px-4 py-3 backdrop-blur-xl border border-[var(--rl-line)] rounded-[28px] mt-1"
             style={{ background: "color-mix(in srgb, var(--rl-ink-2) 92%, transparent)" }}
           >

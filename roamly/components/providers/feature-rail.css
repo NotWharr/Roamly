@@ -52,6 +52,9 @@
   gap: 1.5rem;
   overflow-x: auto;
   scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-x: contain;
+  scroll-padding-inline: var(--rl-gutter);
 }
 
 .fr_rail::-webkit-scrollbar {
@@ -73,7 +76,7 @@
   position: relative;
   display: flex;
   flex-direction: row;
-  gap: 1.5rem;
+  gap: 0.5rem;
 }
 
 /* Hairline Indicator Style */
@@ -94,13 +97,15 @@
 /* Chapter Navigation Link */
 .fr_link {
   display: flex;
+  flex-shrink: 0;
   align-items: center;
   gap: 0.5rem;
   background: none;
   border: none;
   /* Horizontal bar, so the targets are tall enough to tap and wide enough not
      to be missed. 44px minimum on the primary navigation of a phone. */
-  padding: 0.75rem 0;
+  min-height: 44px;
+  padding: 0.75rem 0.75rem;
   white-space: nowrap;
   text-align: left;
   cursor: pointer;
@@ -113,6 +118,11 @@
 
 .fr_link:hover {
   color: var(--rl-text);
+}
+
+.fr_link:active {
+  color: var(--rl-text);
+  transform: scale(0.97);
 }
 
 .fr_link:focus-visible {
@@ -144,7 +154,7 @@
 .fr_content {
   display: flex;
   flex-direction: column;
-  gap: clamp(6rem, 18vh, 12rem);
+  gap: clamp(3rem, 10vh, 12rem);
 }
 
 /* min-height was 70vh on every chapter, which meant a short chapter still
@@ -155,7 +165,7 @@
   flex-direction: column;
   gap: 2.5rem;
   padding-block: clamp(1rem, 4vh, 4rem);
-  scroll-margin-top: 140px;
+  scroll-margin-top: calc(var(--rl-nav-clearance) + 120px);
 }
 
 .fr_chapter_header {

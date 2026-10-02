@@ -144,7 +144,7 @@ export default function BookingModal({
           onSubmit={handleBook}
           className="flex min-h-0 flex-1 flex-col"
         >
-          <div className="min-h-0 flex-1 overflow-y-auto px-5 pb-6 pt-5 sm:px-8 sm:pt-7">
+          <div data-lenis-prevent className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-5 pb-6 pt-5 sm:px-8 sm:pt-7">
             <div className="bm-head">
               <h2
                 id="booking-title"
@@ -191,7 +191,7 @@ export default function BookingModal({
 
                 <p
                   id="booking-date-hint"
-                  className="mt-2.5 text-xs leading-relaxed text-[var(--rl-mute)]"
+                  className="mt-2.5 text-[13px] leading-relaxed text-[var(--rl-mute)]"
                 >
                   {canBook ? (
                     <>
@@ -222,7 +222,7 @@ export default function BookingModal({
                     max={MAX_GUESTS}
                     onChange={setGuests}
                     before={
-                      <p className="max-w-[34ch] text-xs leading-relaxed text-[var(--rl-mute)]">
+                      <p className="max-w-[34ch] text-[13px] leading-relaxed text-[var(--rl-mute)]">
                         Up to {MAX_GUESTS} on any one excursion. For a bigger
                         group, email us and we will put two guides on it.
                       </p>

@@ -159,10 +159,17 @@ export default function FeatureRail({
     setActiveIndex(index)
     updateIndicator(index)
 
-    // Offset by the sticky rail height plus a little air, so the chapter
-    // heading does not land under the navbar.
+    // Offset by the sticky rail + navbar clearance, so the chapter heading
+    // does not land under the bar. Uses the live token rather than a hard
+    // number: the bar is 88px sticky top + ~46px itself on phones.
+    const clearance =
+      parseFloat(
+        getComputedStyle(document.documentElement).getPropertyValue(
+          "--rl-nav-clearance"
+        )
+      ) || 96;
     const topOffset =
-      targetSection.getBoundingClientRect().top + window.scrollY - 120
+      targetSection.getBoundingClientRect().top + window.scrollY - clearance - 56;
 
     const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches
     window.scrollTo({ top: topOffset, behavior: reduce ? 'auto' : 'smooth' })

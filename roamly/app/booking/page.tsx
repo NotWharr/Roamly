@@ -88,7 +88,7 @@ function BookingFlow() {
 
           {/* One horizontal strip rather than a grid: the cards are tall and
               the strip scrolls on narrow screens, so nothing is cramped. */}
-          <div className="rl-strip mt-5 flex snap-x snap-mandatory gap-4 overflow-x-auto pb-4 sm:gap-5">
+          <div className="rl-strip mt-5 flex snap-x snap-proximity gap-4 overflow-x-auto pb-4 sm:gap-5">
             {TOURS.map((option, i) => (
               <div
                 key={option.id}
@@ -195,9 +195,19 @@ function BookingFlow() {
               Take this to payment
             </JigglyButton>
           ) : (
-            <p className="mt-6 text-sm text-[var(--rl-mute)]">
-              Choose a date and the payment step opens here.
-            </p>
+            <>
+              <JigglyButton
+                size="block"
+                disabled
+                className="mt-6 w-full"
+                aria-describedby="booking-page-date-hint"
+              >
+                Take this to payment
+              </JigglyButton>
+              <p className="mt-3 text-sm text-[var(--rl-mute)]">
+                Choose a date above and the payment step opens here.
+              </p>
+            </>
           )}
             </>
           ) : null}

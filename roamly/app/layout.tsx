@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Geist } from "next/font/google";
 import SmoothScroll from "@/components/providers/SmoothScroll";
 import "./globals.css";
@@ -12,6 +12,16 @@ const geistSans = Geist({
   variable: "--font-geist-sans",
   subsets: ["latin"],
 });
+
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  viewportFit: "cover",
+  themeColor: [
+    { media: "(prefers-color-scheme: dark)", color: "#04141a" },
+    { media: "(prefers-color-scheme: light)", color: "#F7F2E8" },
+  ],
+};
 
 export const metadata: Metadata = {
   metadataBase: new URL("https://roamlytours.com"),

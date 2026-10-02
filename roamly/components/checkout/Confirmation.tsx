@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useRef } from "react";
 import { Check, Mail } from "lucide-react";
 
 import JigglyButton from "@/components/ui/JigglyButton";
@@ -32,6 +33,28 @@ export default function Confirmation({
   total,
   reference,
 }: ConfirmationProps) {
+  const dialogRef = useRef<HTMLDivElement | null>(null);
+
+  // Lock background scroll, focus the dialog, close on Escape. Without this
+  // the page behind scrolls on touch while the confirmation is open.
+  useEffect(() => {
+    if (!isOpen) return;
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    dialogRef.current?.focus();
+
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        document.getElementById("confirm-back")?.focus();
+      }
+    };
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      document.removeEventListener("keydown", onKey);
+    };
+  }, [isOpen]);
+
   if (!isOpen) return null;
 
   return (
@@ -39,9 +62,13 @@ export default function Confirmation({
       role="dialog"
       aria-modal="true"
       aria-labelledby="confirm-title"
-      className="rl-root rl-z-modal fixed inset-0 flex items-center justify-center bg-[rgba(4,14,18,0.86)] p-5 backdrop-blur-md"
+      className="rl-root rl-z-modal fixed inset-0 z-[var(--rl-z-modal)] flex items-center justify-center overflow-y-auto bg-[rgba(4,14,18,0.86)] p-4 backdrop-blur-md sm:p-5"
     >
-      <div className="rl-sheet-in w-full max-w-md rounded-[4px] border border-[var(--rl-line)] bg-[var(--rl-ink-2)] p-7">
+      <div
+        ref={dialogRef}
+        tabIndex={-1}
+        className="rl-sheet-in my-auto w-full max-w-md rounded-[4px] border border-[var(--rl-line)] bg-[var(--rl-ink-2)] p-5 outline-none sm:p-7"
+      >
         <span className="grid h-14 w-14 place-items-center rounded-full bg-[color-mix(in_srgb,var(--rl-accent)_18%,transparent)] text-[var(--rl-accent-text)]">
           <Check
             style={{ width: CHECK_ICON, height: CHECK_ICON }}
@@ -59,21 +86,21 @@ export default function Confirmation({
           site yet. Connect one and this step becomes the real thing.
         </p>
 
-        <dl className="mt-6 flex flex-col gap-3 border-y border-[var(--rl-line)] py-5 text-sm">
-          <div className="flex justify-between gap-4">
-            <dt className="text-[var(--rl-mute)]">Excursion</dt>
-            <dd className="text-right font-semibold">{tourTitle}</dd>
+        <dl className="mt-6 flex min-w-0 flex-col gap-3 border-y border-[var(--rl-line)] py-5 text-sm">
+          <div className="flex min-w-0 justify-between gap-4">
+            <dt className="shrink-0 text-[var(--rl-mute)]">Excursion</dt>
+            <dd className="min-w-0 break-words text-right font-semibold">{tourTitle}</dd>
           </div>
-          <div className="flex justify-between gap-4">
-            <dt className="text-[var(--rl-mute)]">Date</dt>
-            <dd className="text-right font-semibold">{dateLabel}</dd>
+          <div className="flex min-w-0 justify-between gap-4">
+            <dt className="shrink-0 text-[var(--rl-mute)]">Date</dt>
+            <dd className="min-w-0 break-words text-right font-semibold">{dateLabel}</dd>
           </div>
-          <div className="flex justify-between gap-4">
-            <dt className="text-[var(--rl-mute)]">Total</dt>
+          <div className="flex min-w-0 justify-between gap-4">
+            <dt className="shrink-0 text-[var(--rl-mute)]">Total</dt>
             <dd className="text-right font-semibold tabular-nums">${total}</dd>
           </div>
-          <div className="flex justify-between gap-4">
-            <dt className="text-[var(--rl-mute)]">Reference</dt>
+          <div className="flex min-w-0 justify-between gap-4">
+            <dt className="shrink-0 text-[var(--rl-mute)]">Reference</dt>
             <dd className="text-right font-semibold tabular-nums">{reference}</dd>
           </div>
         </dl>
@@ -87,7 +114,7 @@ export default function Confirmation({
             />
             <span>
               A confirmation would reach{" "}
-              <span className="text-[var(--rl-text)]">{email}</span>.
+              <span className="break-all text-[var(--rl-text)]">{email}</span>.
             </span>
           </p>
         ) : null}
