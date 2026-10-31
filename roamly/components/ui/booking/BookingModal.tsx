@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { CalendarDays, Lock, Users, X } from "lucide-react";
+import gsap from "gsap";
 
 import BookingCalendar from "@/components/ui/booking/BookingCalendar";
 import PillStepper from "@/components/ui/booking/PillStepper";
@@ -37,8 +38,8 @@ interface BookingModalProps {
  * is why it can sit open as a bottom sheet without committing anyone to a
  * cost, and why the price lives in one place rather than two.
  *
- * The reference was a warm light card, so it is translated onto the site's dark
- * ramp rather than pasted in. What survives is its shape: the heading, the two
+ * The reference was a warm light card, so the sheet is a white surface on the
+ * site's salt-paper ground. What survives is its shape: the heading, the two
  * labelled controls, and the pinned call to action.
  */
 export default function BookingModal({
@@ -47,6 +48,8 @@ export default function BookingModal({
   preSelectedOptionId,
 }: BookingModalProps) {
   const router = useRouter();
+  const rootRef = useRef<HTMLDivElement>(null);
+  const backdropRef = useRef<HTMLDivElement>(null);
   const dialogRef = useRef<HTMLDivElement>(null);
   const onCloseRef = useRef(onClose);
   const [guests, setGuests] = useState(1);
@@ -102,6 +105,28 @@ export default function BookingModal({
     };
   }, [isOpen]);
 
+  // The sheet and scrim enter with GSAP; there are no CSS transitions in the
+  // booking flow. Reduced motion skips straight to the open state.
+  useEffect(() => {
+    if (!isOpen) return;
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+
+    const ctx = gsap.context(() => {
+      gsap.fromTo(
+        backdropRef.current,
+        { opacity: 0 },
+        { opacity: 1, duration: 0.3, ease: "power2.out" },
+      );
+      gsap.fromTo(
+        dialogRef.current,
+        { y: 52, opacity: 0 },
+        { y: 0, opacity: 1, duration: 0.55, ease: "power3.out" },
+      );
+    }, rootRef);
+
+    return () => ctx.revert();
+  }, [isOpen]);
+
   if (!isOpen) return null;
 
   // Nothing is reserved until a date is on the sheet, so the call to action
@@ -124,10 +149,12 @@ export default function BookingModal({
 
   return (
     <div
-      className={`rl-root rl-darklock rl-z-modal fixed inset-0 flex items-end justify-center sm:items-center sm:p-6 ${rlFonts}`}
+      ref={rootRef}
+      className={`rl-root rl-z-modal fixed inset-0 flex items-end justify-center sm:items-center sm:p-6 ${rlFonts}`}
     >
       <div
-        className="rl-backdrop-in absolute inset-0 bg-[rgba(4,14,18,0.82)]"
+        ref={backdropRef}
+        className="absolute inset-0 bg-[rgb(16_46_41_/_0.55)]"
         onClick={onClose}
         aria-hidden="true"
       />
@@ -138,7 +165,7 @@ export default function BookingModal({
         aria-modal="true"
         aria-labelledby="booking-title"
         tabIndex={-1}
-        className="bm-sheet rl-on-ink-2 rl-sheet-in relative flex max-h-[94dvh] w-full flex-col overflow-hidden rounded-t-[28px] sm:max-w-xl sm:rounded-[4px]"
+        className="bm-sheet rl-on-ink-2 relative flex max-h-[94dvh] w-full flex-col overflow-hidden rounded-t-[24px] border border-[var(--rl-line)] shadow-[0_30px_80px_-30px_rgb(16_46_41_/_0.45)] sm:max-w-xl sm:rounded-[16px]"
       >
         <form
           onSubmit={handleBook}
@@ -151,7 +178,7 @@ export default function BookingModal({
                 className="rl-display text-balance text-[clamp(1.75rem,6vw,2.375rem)]"
               >
                 Pick a day and{" "}
-                <span className="font-extrabold text-[var(--rl-accent)]">
+                <span className="text-[var(--rl-accent-text)]">
                   we will hold it
                 </span>
               </h2>
@@ -160,7 +187,7 @@ export default function BookingModal({
                 type="button"
                 onClick={onClose}
                 aria-label="Close booking"
-                className="-mr-2 grid h-11 w-11 shrink-0 place-items-center rounded-full text-[var(--rl-mute)] transition-colors duration-200 hover:bg-[color-mix(in_srgb,var(--rl-text)_10%,transparent)] hover:text-[var(--rl-text)]"
+                className="-mr-2 grid h-11 w-11 shrink-0 place-items-center rounded-full text-[var(--rl-mute)] hover:bg-[color-mix(in_srgb,var(--rl-text)_8%,transparent)] hover:text-[var(--rl-text)]"
               >
                 <X
                   style={{ width: CLOSE_ICON, height: CLOSE_ICON }}

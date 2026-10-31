@@ -1,142 +1,125 @@
 "use client";
 
-import { useEffect, useRef, type RefObject } from "react";
-import WaterRipple from "@/components/providers/WaterRipple";
+import Link from "next/link";
+import { useEffect, useRef, useState } from "react";
+import gsap from "gsap";
+import { ArrowDown } from "lucide-react";
+
+import AnimatedText from "@/components/ui/AnimatedText";
+import BookingModal from "@/components/ui/booking/BookingModal";
 import JigglyButton from "@/components/ui/JigglyButton";
-import TextReveal from "@/components/ui/text-reveal";
-interface HeroProps {
-  heroRef?: RefObject<HTMLElement | null>;
-}
+import WaterSurface from "@/components/ui/WaterSurface";
 
-export default function Hero({ heroRef }: HeroProps) {
-  const sectionRef = useRef<HTMLElement | null>(null);
-  const ctaContainerRef = useRef<HTMLDivElement | null>(null);
+/*
+  Photos, both from Unsplash (free licence), stored locally for the WebGL texture:
+  - hero-water.webp           Hugh Whyte   https://unsplash.com/photos/VhwZx7YtFjQ
+  - hero-water-portrait.webp  Romello Williams  https://unsplash.com/photos/VyXhQpX9VG8
+  Neither is confirmed to be Grenada, so the alt text does not name a place.
+*/
+const WIDE = { src: "/hero-water.webp", width: 2400, height: 1347 };
+const TALL = { src: "/hero-water-portrait.webp", width: 1400, height: 1867 };
 
-  // Use the parent's ref when supplied.
-  // Keep the local ref as a fallback.
-  const resolvedHeroRef = heroRef ?? sectionRef;
+const posterAlt = "Looking straight down on a small boat crossing clear turquoise water";
 
-  // CTA fade-up, timed to land just after the text reveals.
-  // A safety timer forces opacity to 1: if the WAAPI animation is throttled
-  // or interrupted (background tab, low-end Android), the CTA must not stay
-  // invisible. The primary LCP action is never left at opacity 0.
+/**
+ * The hero is the water.
+ *
+ * An overhead photo fills the viewport, so the ripple simulation reads as the
+ * actual surface rather than an effect laid over a picture. The headline sits
+ * in the deep water at the top, the booking action in the lower corner, and
+ * the boat is left clear between them. The poster image is the complete hero
+ * without JavaScript, WebGL or motion; the canvas only fades in over it.
+ */
+export default function Hero() {
+  const [bookingOpen, setBookingOpen] = useState(false);
+  const actionsRef = useRef<HTMLDivElement | null>(null);
+
   useEffect(() => {
-    const el = ctaContainerRef.current;
-    if (!el) return;
-
-    const prefersReducedMotion = window.matchMedia(
-      "(prefers-reduced-motion: reduce)"
-    ).matches;
-
-    if (prefersReducedMotion) {
-      el.style.opacity = "1";
-      return;
-    }
-
-    const anim = el.animate(
-        [
-          {
-            opacity: 0,
-            transform: "translate3d(0, 24px, 0)",
-          },
-          {
-            opacity: 1,
-            transform: "translate3d(0, 0, 0)",
-          },
-        ],
-        {
-          duration: 1200,
-          easing: "cubic-bezier(0.16, 1, 0.3, 1)",
-          delay: 2000,
-          fill: "forwards",
-        }
-      );
-    anim.onfinish = () => {
-      el.style.opacity = "1";
-    };
-    // Safety net independent of the animation clock.
-    const fallback = window.setTimeout(() => {
-      el.style.opacity = "1";
-    }, 3600);
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    const tween = gsap.fromTo(
+      actionsRef.current,
+      { y: 20, opacity: 0 },
+      {
+        y: 0,
+        opacity: 1,
+        duration: 0.9,
+        delay: 0.45,
+        ease: "power3.out",
+        clearProps: "transform,opacity",
+      },
+    );
     return () => {
-      window.clearTimeout(fallback);
-      try {
-        anim.cancel();
-      } catch {
-        /* already finished */
-      }
+      tween.revert();
     };
   }, []);
 
   return (
     <section
       id="home"
-      ref={resolvedHeroRef}
-      className="rl-darklock relative flex h-[100svh] min-h-[100svh] w-full items-center justify-center overflow-hidden text-[var(--rl-text)] select-none [@supports(height:100dvh)]:h-[100dvh] [@supports(height:100dvh)]:min-h-[100dvh]"
-      style={{ background: "var(--rl-ink)" }}
-      aria-label="Hero Section"
+      aria-label="Roamly guided tours of Grenada"
+      data-water
+      className="rl-on-water relative isolate flex min-h-[100svh] flex-col justify-between overflow-hidden bg-[var(--rl-sea)] text-white"
     >
-      {/* WEBGL WATER RIPPLE FLUID SIMULATION BACKGROUND */}
-      <div className="absolute inset-0 z-0 h-full w-full overflow-hidden">
-        <WaterRipple imageSrc="/hero-bg.webp" />
+      <WaterSurface wide={WIDE} tall={TALL} alt={posterAlt} priority />
 
-        <div className="absolute inset-0 z-10 bg-gradient-to-b from-[var(--rl-ink)]/60 via-[var(--rl-ink)]/20 to-[var(--rl-ink)]/70 pointer-events-none" />
+      {/* Depth, not decoration: darkens the water behind the nav, headline and actions. */}
+      <div
+        aria-hidden="true"
+        className="pointer-events-none absolute inset-0 -z-10 bg-[linear-gradient(180deg,rgb(6_38_44/0.62)_0%,rgb(6_38_44/0.28)_34%,transparent_56%)]"
+      />
+      <div
+        aria-hidden="true"
+        className="pointer-events-none absolute inset-0 -z-10 bg-[radial-gradient(90%_55%_at_100%_100%,rgb(6_38_44/0.72)_0%,transparent_100%)] max-[900px]:bg-[linear-gradient(0deg,rgb(6_38_44/0.82)_0%,rgb(6_38_44/0.5)_28%,transparent_52%)]"
+      />
 
-        <div className="absolute inset-0 z-10 bg-radial-vignette opacity-60 pointer-events-none" />
-      </div>
-
-      {/* FOREGROUND CONTENT */}
-      <div className="relative z-25 flex h-full w-full max-w-6xl flex-col justify-between px-6 py-8 sm:px-10 md:px-12 lg:px-16 pt-20 pb-10 sm:pt-24 sm:pb-12 pointer-events-none">
-        <div className="my-auto flex flex-col items-center text-center">
-          <TextReveal
-            as="h1"
-            type="words"
-            unstyled
-            duration={1.8}
-            stagger={0.18}
-            className="max-w-4xl font-sans text-[clamp(2rem,9vw,5.75rem)] font-black tracking-tight leading-[1.04] text-white [text-shadow:0_4px_32px_rgba(0,0,0,0.5)] pointer-events-auto [&_.split-line]:-my-[0.08em] [&_.split-line]:py-[0.08em]"
-          >
-            Grenada, on foot and underwater.
-          </TextReveal>
-
-          <TextReveal
-            as="p"
-            type="lines"
-            unstyled
-            delay={0.6}
-            duration={1.6}
-            stagger={0.22}
-            className="mt-6 max-w-lg text-base md:text-lg font-semibold leading-relaxed text-white font-sans [text-shadow:0_2px_16px_rgba(0,0,0,0.5)] pointer-events-auto"
-          >
-            Guided days into Grand Etang and the west sand flats, in groups of
-            six. No coach queues.
-          </TextReveal>
-        </div>
-
-        <div
-          ref={ctaContainerRef}
-          className="will-change-transform flex flex-col items-center justify-center gap-4 pt-2 pointer-events-auto opacity-0"
+      <div className="mx-auto w-full max-w-[1400px] px-[var(--rl-gutter)] pt-[calc(72px+env(safe-area-inset-top,0px)+clamp(20px,4vh,48px))]">
+        <AnimatedText
+          as="h1"
+          mode="words"
+          trigger="load"
+          delay={0.1}
+          stagger={0.07}
+          className="rl-display rl-hero-title"
         >
-          <JigglyButton
-            href="/booking"
-            tone="glass"
-            size="hero"
-            withArrow
-          >
-            Book a tour
-          </JigglyButton>
+          Grenada,
+          <br />
+          before the coaches.
+        </AnimatedText>
+      </div>
+
+      <div className="mx-auto mt-16 flex w-full max-w-[1400px] justify-end px-[var(--rl-gutter)] pb-[calc(clamp(28px,5vh,56px)+env(safe-area-inset-bottom,0px))]">
+        <div ref={actionsRef} className="w-full sm:max-w-[27rem]">
+          <p className="text-[1.0625rem] leading-relaxed sm:text-lg">
+            Small-group days out of St George&apos;s into Grand Etang, Annandale
+            Falls and the west sand flats, with guides who live here.
+          </p>
+
+          <div className="mt-7 flex flex-wrap items-center gap-x-7 gap-y-3">
+            <JigglyButton
+              size="hero"
+              withArrow
+              className="max-sm:w-full"
+              onClick={() => setBookingOpen(true)}
+            >
+              Book a tour
+            </JigglyButton>
+
+            <Link
+              href="#days"
+              className="inline-flex min-h-11 items-center gap-2 text-sm font-semibold underline decoration-white/50 underline-offset-[6px] hover:decoration-white"
+            >
+              See the days
+              <ArrowDown size={16} strokeWidth={2} aria-hidden="true" />
+            </Link>
+          </div>
         </div>
       </div>
 
-      <style jsx global>{`
-        .bg-radial-vignette {
-          background: radial-gradient(
-            circle at center,
-            transparent 30%,
-            var(--rl-ink) 100%
-          );
-        }
-      `}</style>
+      <BookingModal
+        isOpen={bookingOpen}
+        onClose={() => setBookingOpen(false)}
+        preSelectedOptionId={null}
+      />
     </section>
   );
 }

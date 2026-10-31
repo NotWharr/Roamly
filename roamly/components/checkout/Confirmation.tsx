@@ -2,6 +2,7 @@
 
 import { useEffect, useRef } from "react";
 import { Check, Mail } from "lucide-react";
+import gsap from "gsap";
 
 import JigglyButton from "@/components/ui/JigglyButton";
 
@@ -43,6 +44,17 @@ export default function Confirmation({
     document.body.style.overflow = "hidden";
     dialogRef.current?.focus();
 
+    let ctx: gsap.Context | null = null;
+    if (!window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+      ctx = gsap.context(() => {
+        gsap.fromTo(
+          dialogRef.current,
+          { y: 24, opacity: 0 },
+          { y: 0, opacity: 1, duration: 0.45, ease: "power3.out" },
+        );
+      }, dialogRef);
+    }
+
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") {
         document.getElementById("confirm-back")?.focus();
@@ -52,6 +64,7 @@ export default function Confirmation({
     return () => {
       document.body.style.overflow = previousOverflow;
       document.removeEventListener("keydown", onKey);
+      ctx?.revert();
     };
   }, [isOpen]);
 
@@ -62,12 +75,12 @@ export default function Confirmation({
       role="dialog"
       aria-modal="true"
       aria-labelledby="confirm-title"
-      className="rl-root rl-z-modal fixed inset-0 z-[var(--rl-z-modal)] flex items-center justify-center overflow-y-auto bg-[rgba(4,14,18,0.86)] p-4 backdrop-blur-md sm:p-5"
+      className="rl-root rl-z-modal fixed inset-0 z-[var(--rl-z-modal)] flex items-center justify-center overflow-y-auto bg-[rgb(16_46_41_/_0.55)] p-4 sm:p-5"
     >
       <div
         ref={dialogRef}
         tabIndex={-1}
-        className="rl-sheet-in my-auto w-full max-w-md rounded-[4px] border border-[var(--rl-line)] bg-[var(--rl-ink-2)] p-5 outline-none sm:p-7"
+        className="my-auto w-full max-w-md rounded-[16px] border border-[var(--rl-line)] bg-[var(--rl-ink-2)] p-5 outline-none sm:p-7"
       >
         <span className="grid h-14 w-14 place-items-center rounded-full bg-[color-mix(in_srgb,var(--rl-accent)_18%,transparent)] text-[var(--rl-accent-text)]">
           <Check

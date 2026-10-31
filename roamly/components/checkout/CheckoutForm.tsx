@@ -72,7 +72,6 @@ interface CheckoutFormProps {
   guests: number;
   money: Money;
   values: Record<string, string>;
-  errors: Record<string, string>;
   showError: (key: string) => string;
   setValue: (key: string, next: string) => void;
   paying: boolean;
@@ -85,17 +84,16 @@ export default function CheckoutForm({
   guests,
   money,
   values,
-  errors,
   showError,
   setValue,
   paying,
   onSubmit,
 }: CheckoutFormProps) {
-  const e = (key: string) => showError(key) || errors[key] || "";
+  const e = (key: string) => showError(key);
 
   return (
     <form onSubmit={onSubmit} noValidate className="flex flex-col gap-6">
-      <section className="rounded-[4px] border border-[var(--rl-line)] bg-[var(--rl-ink-2)] p-6">
+      <section className="rounded-[16px] border border-[var(--rl-line)] bg-[var(--rl-ink-2)] p-6">
         <h2 className="rl-display text-xl">Who is travelling</h2>
 
         <p className="mt-1.5 text-sm text-[var(--rl-mute)]">
@@ -173,7 +171,7 @@ export default function CheckoutForm({
         </div>
       </section>
 
-      <section className="rounded-[4px] border border-[var(--rl-line)] bg-[var(--rl-ink-2)] p-6">
+      <section className="rounded-[16px] border border-[var(--rl-line)] bg-[var(--rl-ink-2)] p-6">
         <h2 className="rl-display text-xl">Payment</h2>
 
         <p className="mt-1.5 flex items-start gap-2 text-sm text-[var(--rl-mute)]">

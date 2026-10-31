@@ -5,8 +5,6 @@ import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { Info, Users } from "lucide-react";
 
-import BackLink from "@/components/layout/BackLink";
-import SocialLinks from "@/components/design/SocialLinks";
 import BookingCalendar from "@/components/ui/booking/BookingCalendar";
 import ConfirmPanel from "@/components/ui/booking/ConfirmPanel";
 import PillStepper, { RollingNumber } from "@/components/ui/booking/PillStepper";
@@ -14,6 +12,8 @@ import TourCard from "@/components/ui/booking/TourCard";
 import JigglyButton from "@/components/ui/JigglyButton";
 import { readableDate, toIsoDate } from "@/lib/calendar";
 import { MAX_GUESTS, TOURS, findTour } from "@/lib/tours";
+import PageBanner from "@/components/layout/PageBanner";
+import SiteFooter from "@/components/layout/SiteFooter";
 import { rlFonts } from "@/lib/roamlyFonts";
 
 import "@/styles/roamly.css";
@@ -60,24 +60,16 @@ function BookingFlow() {
 
   return (
     <main
-      className={`rl-root rl-on-ink rl-z-content relative flex min-h-dvh flex-col px-[length:var(--rl-gutter)] ${rlFonts}`}
+      className={`rl-root rl-on-ink rl-z-content relative flex min-h-dvh flex-col ${rlFonts}`}
     >
-      <BackLink href="/">Back to exploring</BackLink>
+      <PageBanner backHref="/" backLabel="Back to exploring" title="Book your trip">
+        Pick an excursion, choose your date and how many are coming, then carry
+        on to payment. Nothing is charged until you do.
+      </PageBanner>
 
       {/* min-w-0 for the same reason as the fieldset: this is a flex child, and
             without it the calendar's own width sets the page's minimum. */}
-      <div className="mx-auto flex w-full min-w-0 max-w-5xl flex-1 flex-col pb-16 pt-32 sm:pt-36">
-        <header className="max-w-[46ch]">
-          <h1 className="rl-display text-[clamp(2.25rem,8vw,4rem)]">
-            Book your trip
-          </h1>
-
-          <p className="mt-4 text-base leading-relaxed text-[var(--rl-mute)]">
-            Pick an excursion, choose your date and how many are coming, then
-            carry on to payment. Nothing is charged until you do.
-          </p>
-        </header>
-
+      <div className="mx-auto flex w-full min-w-0 max-w-[1400px] flex-1 flex-col px-[var(--rl-gutter)] pb-16">
         {/* min-w-0 is load bearing. A grid or flex child defaults to min-width:auto,
             so the strip's scroll width becomes the fieldset's minimum and the
             whole page scrolls sideways instead of only the strip. */}
@@ -232,11 +224,9 @@ function BookingFlow() {
             set out how a booking is confirmed and cancelled.
           </span>
         </p>
-
-        <div className="mt-auto pt-16">
-          <SocialLinks />
-        </div>
       </div>
+
+      <SiteFooter />
     </main>
   );
 }

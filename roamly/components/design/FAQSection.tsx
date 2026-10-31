@@ -3,13 +3,12 @@
 import { useState } from "react";
 
 import FAQItem, { type FAQEntry } from "@/components/design/FAQItem";
+import AnimatedText from "@/components/ui/AnimatedText";
 import JigglyButton from "@/components/ui/JigglyButton";
-import { rlFonts } from "@/lib/roamlyFonts";
 
 /**
  * Answers written for people actually booking a Grenada excursion.
  *
- * The old copy was "what is included in each package" answered generically.
  * These answer the questions a visitor to this island actually has: how wet it
  * is, whether the reef is safe, how far the boat is, and what happens to the
  * money if the sea is flat.
@@ -57,43 +56,56 @@ export default function FAQSection() {
   const [openId, setOpenId] = useState<number | null>(1);
 
   return (
-    <>
-      <section
-        id="faq"
-        className={`rl-root rl-on-ink rl-theme rl-theme-forest rl-section-y rl-pad-x rl-z-content relative ${rlFonts}`}
-      >
-        {/* Mobile order: heading, questions, action. Desktop: heading + action pinned left. */}
-        <div className="mx-auto grid max-w-7xl grid-cols-1 gap-x-12 gap-y-12 lg:grid-cols-12">
-          <div className="lg:col-span-5 lg:row-start-1">
-            <h2 className="rl-display rl-h2">Before you book.</h2>
-            <p className="mt-6 max-w-[38ch] text-base leading-relaxed text-[var(--rl-mute)]">
-              The six questions people ask us most, answered honestly. If yours
-              is not here, ask it and we will tell you straight.
-            </p>
-          </div>
+    <section
+      id="faq"
+      aria-labelledby="faq-title"
+      className="border-t border-[var(--rl-line)] bg-[var(--rl-ink)] pb-[var(--rl-section-y)] pt-[calc(var(--rl-section-y)*0.7)]"
+    >
+      <div className="mx-auto grid w-full max-w-[1400px] grid-cols-1 gap-x-12 gap-y-12 px-[var(--rl-gutter)] lg:grid-cols-12">
+        <div className="lg:col-span-4">
+          <AnimatedText
+            as="h2"
+            id="faq-title"
+            mode="lines"
+            className="rl-display max-w-[10ch] text-[clamp(2.75rem,6vw,5.5rem)] tracking-[-0.05em] leading-[0.98]"
+          >
+            Before you book.
+          </AnimatedText>
 
-          <div className="lg:col-span-7 lg:col-start-6 lg:row-span-2 lg:row-start-1">
-            {faqData.map((entry) => (
-              <FAQItem
-                key={entry.id}
-                entry={entry}
-                isOpen={openId === entry.id}
-                onToggle={() =>
-                  setOpenId((prev) => (prev === entry.id ? null : entry.id))
-                }
-              />
-            ))}
-          </div>
+          <AnimatedText
+            as="p"
+            mode="lines"
+            delay={0.1}
+            className="mt-5 max-w-[36ch] text-base leading-relaxed text-[var(--rl-mute)]"
+          >
+            The six questions people ask us most, answered honestly. If yours is
+            not here, ask it and we will tell you straight.
+          </AnimatedText>
 
-          <div className="lg:col-span-5 lg:row-start-2 lg:self-end">
-            {/* The arrow comes from withArrow. Passing an icon as a child too
-                would draw two of them. */}
-            <JigglyButton href="/contact" size="block" withArrow className="w-full sm:w-auto">
-              Ask us something
-            </JigglyButton>
-          </div>
+          <JigglyButton
+            href="/contact"
+            tone="outline"
+            size="block"
+            withArrow
+            className="mt-8 w-full sm:w-auto"
+          >
+            Contact us
+          </JigglyButton>
         </div>
-      </section>
-    </>
+
+        <div className="lg:col-span-7 lg:col-start-6">
+          {faqData.map((entry) => (
+            <FAQItem
+              key={entry.id}
+              entry={entry}
+              isOpen={openId === entry.id}
+              onToggle={() =>
+                setOpenId((prev) => (prev === entry.id ? null : entry.id))
+              }
+            />
+          ))}
+        </div>
+      </div>
+    </section>
   );
 }

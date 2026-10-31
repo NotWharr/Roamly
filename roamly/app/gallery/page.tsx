@@ -2,8 +2,8 @@
 
 import Image from "next/image";
 
-import BackLink from "@/components/layout/BackLink";
-import SocialLinks from "@/components/design/SocialLinks";
+import PageBanner from "@/components/layout/PageBanner";
+import SiteFooter from "@/components/layout/SiteFooter";
 import JigglyButton from "@/components/ui/JigglyButton";
 import { GALLERY } from "@/lib/gallery";
 import { rlFonts } from "@/lib/roamlyFonts";
@@ -20,24 +20,15 @@ import "@/styles/roamly.css";
 export default function GalleryPage() {
   return (
     <main
-      className={`rl-root rl-on-ink rl-z-content relative flex min-h-dvh flex-col px-[length:var(--rl-gutter)] ${rlFonts}`}
+      className={`rl-root rl-on-ink rl-z-content relative flex min-h-dvh flex-col ${rlFonts}`}
     >
-      <BackLink href="/">Back to home</BackLink>
+      <PageBanner backHref="/" backLabel="Back to home" title="The whole collection">
+        {GALLERY.length} photographs of water, forest and reef, from the west
+        sand flats to the Annandale river. Ask your guide which frame is which
+        and they will tell you.
+      </PageBanner>
 
-      <div className="mx-auto flex w-full max-w-6xl flex-1 flex-col pb-16 pt-32 sm:pt-36">
-        <header className="max-w-[42ch]">
-          <span className="rl-badge">{GALLERY.length} photographs</span>
-
-          <h1 className="rl-display mt-5 text-balance text-[clamp(2.25rem,8vw,4rem)]">
-            The whole collection
-          </h1>
-
-          <p className="mt-4 text-base leading-relaxed text-[var(--rl-mute)]">
-            Water, forest and reef, from the west sand flats to the Annandale
-            river. Ask your guide which frame is which and they will tell you.
-          </p>
-        </header>
-
+      <div className="mx-auto w-full max-w-[1400px] flex-1 px-[var(--rl-gutter)] pb-16">
         {/*
           A masonry-ish column layout rather than a fixed grid. CSS columns
           keep each photograph's own ratio and let the browser balance the
@@ -48,7 +39,7 @@ export default function GalleryPage() {
           {GALLERY.map((frame, index) => (
             <figure key={frame.id} className="mb-4 break-inside-avoid md:mb-6">
               <div
-                className={`relative w-full overflow-hidden rounded-[4px] border border-[var(--rl-line)] bg-[var(--rl-ink-2)] ${frame.ratio}`}
+                className={`relative w-full overflow-hidden bg-[var(--rl-ink-2)] ${frame.ratio}`}
               >
                 <Image
                   src={frame.url}
@@ -85,11 +76,9 @@ export default function GalleryPage() {
           If you want the exact spot for a frame, ask when you book and we will
           put it on your route.
         </p>
-
-        <div className="mt-auto pt-16">
-          <SocialLinks />
-        </div>
       </div>
+
+      <SiteFooter />
     </main>
   );
 }

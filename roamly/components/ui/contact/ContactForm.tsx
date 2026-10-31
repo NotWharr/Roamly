@@ -113,7 +113,7 @@ export default function ContactForm() {
   if (sent) {
     return (
       <div className={`rl-root ${rlFonts}`}>
-        <div className="rl-sheet-in mx-auto max-w-xl rounded-[4px] border border-[var(--rl-line)] bg-[var(--rl-ink)] p-10 text-center">
+        <div className="mx-auto max-w-xl rounded-[16px] border border-[var(--rl-line)] bg-[var(--rl-ink)] p-10 text-center">
           <div
             className="mx-auto grid h-14 w-14 place-items-center rounded-full"
             style={{

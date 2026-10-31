@@ -65,7 +65,7 @@ export default function SocialLinks() {
               rel="noopener noreferrer"
               title={link.label}
               aria-label={`${link.label} (opens in a new tab)`}
-              className="grid h-11 w-11 place-items-center rounded-full border border-[var(--rl-line-strong)] text-[var(--rl-mute)] transition-[color,border-color,background-color] duration-200 hover:border-[var(--rl-accent-text)] hover:bg-[color-mix(in_srgb,var(--rl-accent)_12%,transparent)] hover:text-[var(--rl-accent-text)]"
+              className="grid h-11 w-11 place-items-center rounded-full border border-[var(--rl-line-strong)] text-[var(--rl-mute)] hover:border-[var(--rl-accent-text)] hover:bg-[color-mix(in_srgb,var(--rl-accent)_12%,transparent)] hover:text-[var(--rl-accent-text)]"
             >
               {link.icon}
             </a>

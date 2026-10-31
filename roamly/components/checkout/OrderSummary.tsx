@@ -31,7 +31,7 @@ export default function OrderSummary({
 }: OrderSummaryProps) {
   return (
     <aside className="lg:sticky lg:top-8">
-      <div className="rounded-[4px] border border-[var(--rl-line)] bg-[var(--rl-ink-2)] p-6">
+      <div className="rounded-[16px] border border-[var(--rl-line)] bg-[var(--rl-ink-2)] p-6">
         <h2 className="rl-display text-xl">{tourTitle}</h2>
         <p className="mt-1 text-sm text-[var(--rl-mute)]">Guided excursion</p>
 
@@ -118,7 +118,7 @@ export default function OrderSummary({
 
         <Link
           href="/booking"
-          className="mt-6 inline-flex min-h-[44px] items-center gap-1.5 text-sm text-[var(--rl-mute)] transition-colors duration-200 hover:text-[var(--rl-text)]"
+          className="mt-6 inline-flex min-h-[44px] items-center gap-1.5 text-sm text-[var(--rl-mute)] hover:text-[var(--rl-text)]"
         >
           Change excursion or date
         </Link>

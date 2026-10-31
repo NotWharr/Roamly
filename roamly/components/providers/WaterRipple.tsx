@@ -1,7 +1,8 @@
 "use client";
 
-import React, { useEffect, useRef, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useRef, useMemo, useState } from "react";
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
+import gsap from "gsap";
 import * as THREE from "three";
 
 // ============================================================================
@@ -150,8 +151,17 @@ const waterFragmentShader = `
 // WEBGL SCENE CONTROLLER & MESH
 // ============================================================================
 
-function SimulationPlane({ imageSrc, visibleRef }: { imageSrc: string; visibleRef: React.RefObject<boolean> }) {
+function SimulationPlane({
+  imageSrc,
+  visibleRef,
+  onReady,
+}: {
+  imageSrc: string;
+  visibleRef: React.RefObject<boolean>;
+  onReady: () => void;
+}) {
   const { gl, viewport } = useThree();
+  const dropsRef = useRef<{ x: number; y: number; strength: number; radius: number }[]>([]);
   const [imageAspect, setImageAspect] = useState(1);
   const imageAspectRef = useRef(1);
 
@@ -166,8 +176,14 @@ function SimulationPlane({ imageSrc, visibleRef }: { imageSrc: string; visibleRe
   const waterMatRef = useRef<THREE.ShaderMaterial | null>(null);
 
   // Simulation Render Targets (Ping-Pong Buffers)
-  const simWidth = 256;
-  const simHeight = 256;
+  // Grid follows the canvas aspect so ripples stay round rather than stretching
+  // with the viewport. Fixed at mount: the texture size is not worth rebuilding.
+  const [[simWidth, simHeight]] = useState(() => {
+    const aspect = viewport.width / viewport.height;
+    return aspect >= 1
+      ? [384, Math.round(384 / aspect)]
+      : [Math.round(384 * aspect), 384];
+  });
 
   const targetA = useRef<THREE.WebGLRenderTarget | null>(null);
   const targetB = useRef<THREE.WebGLRenderTarget | null>(null);
@@ -183,22 +199,26 @@ function SimulationPlane({ imageSrc, visibleRef }: { imageSrc: string; visibleRe
       if (img?.naturalWidth && img?.naturalHeight) {
         setImageAspect(img.naturalWidth / img.naturalHeight);
       }
+      onReady();
     });
     tex.minFilter = THREE.LinearFilter;
     tex.magFilter = THREE.LinearFilter;
     return tex;
-  }, [imageSrc]);
+  }, [imageSrc, onReady]);
+
+  useEffect(() => () => texture.dispose(), [texture]);
 
   useEffect(() => {
+    // HalfFloat: linear filtering on full float targets is missing on many phones.
     targetA.current = new THREE.WebGLRenderTarget(simWidth, simHeight, {
       format: THREE.RGBAFormat,
-      type: THREE.FloatType,
+      type: THREE.HalfFloatType,
       minFilter: THREE.LinearFilter,
       magFilter: THREE.LinearFilter,
     });
     targetB.current = new THREE.WebGLRenderTarget(simWidth, simHeight, {
       format: THREE.RGBAFormat,
-      type: THREE.FloatType,
+      type: THREE.HalfFloatType,
       minFilter: THREE.LinearFilter,
       magFilter: THREE.LinearFilter,
     });
@@ -234,18 +254,53 @@ function SimulationPlane({ imageSrc, visibleRef }: { imageSrc: string; visibleRe
       targetA.current?.dispose();
       targetB.current?.dispose();
       geom.dispose();
+      simMatRef.current?.dispose();
+      dropMatRef.current?.dispose();
     };
-  }, []);
+  }, [simWidth, simHeight]);
+
+  // The canvas scrolls with the hero, so pointers are mapped through its rect.
+  const toSurface = (e: PointerEvent) => {
+    const rect = gl.domElement.getBoundingClientRect();
+    const x = (e.clientX - rect.left) / rect.width;
+    const y = 1.0 - (e.clientY - rect.top) / rect.height;
+    return x >= 0 && x <= 1 && y >= 0 && y <= 1 ? { x, y } : null;
+  };
+
+  // A press lands as one heavier drop, on every pointer type. Touch gets this
+  // and the ambient drops below: a single drop never fights a scroll gesture.
+  useEffect(() => {
+    const handlePointerDown = (e: PointerEvent) => {
+      const point = toSurface(e);
+      if (point) dropsRef.current.push({ ...point, strength: 0.05, radius: 0.045 });
+    };
+    window.addEventListener("pointerdown", handlePointerDown, { passive: true });
+    return () => window.removeEventListener("pointerdown", handlePointerDown);
+  });
+
+  // Ambient drops, so the surface reads as water before anyone touches it.
+  useEffect(() => {
+    const timer = window.setInterval(() => {
+      if (document.hidden || !visibleRef.current) return;
+      dropsRef.current.push({
+        x: Math.random(),
+        y: Math.random(),
+        strength: 0.018,
+        radius: 0.022,
+      });
+    }, 2200);
+    return () => window.clearInterval(timer);
+  }, [visibleRef]);
 
   // Pointer tracking & force injection.
   // Fine pointers only: touch drag-scroll fires pointermove continuously,
   // which would inject ripples while scrolling and fight the gesture.
-  // Coarse pointers get ambient ripples only (see the idle timer below).
   useEffect(() => {
     if (window.matchMedia("(pointer: coarse)").matches) return;
     const handlePointerMove = (e: PointerEvent) => {
-      const x = e.clientX / window.innerWidth;
-      const y = 1.0 - e.clientY / window.innerHeight;
+      const point = toSurface(e);
+      if (!point) return;
+      const { x, y } = point;
 
       const dx = x - mouseRef.current.x;
       const dy = y - mouseRef.current.y;
@@ -260,25 +315,23 @@ function SimulationPlane({ imageSrc, visibleRef }: { imageSrc: string; visibleRe
 
     window.addEventListener("pointermove", handlePointerMove, { passive: true });
     return () => window.removeEventListener("pointermove", handlePointerMove);
-  }, []);
+  });
 
   // Frame Loop: Ping-Pong Simulation Steps + Water Distort Rendering.
-  // Suspends entirely once the hero scrolls out of view (visibleRef is
-  // flipped by the IntersectionObserver in WaterRipple): a fullscreen Canvas
-  // kept mounted under the veil must not shade every frame forever.
+  // WaterRippleCanvas stops the loop entirely once the hero scrolls away.
   useFrame(() => {
-    if (visibleRef.current === false) return;
     if (!targetA.current || !targetB.current || !quadMesh.current) return;
 
     const renderer = gl;
     const currentRenderTarget = renderer.getRenderTarget();
 
-    // 1. Inject drop if mouse moved
-    if (mouseRef.current.down && dropMatRef.current && simMatRef.current) {
+    const injectDrop = (x: number, y: number, strength: number, radius: number) => {
+      if (!targetA.current || !targetB.current || !quadMesh.current || !dropMatRef.current) return;
       quadMesh.current.material = dropMatRef.current;
       dropMatRef.current.uniforms.uTexture.value = targetA.current.texture;
-      dropMatRef.current.uniforms.uCenter.value.set(mouseRef.current.x, mouseRef.current.y);
-      dropMatRef.current.uniforms.uStrength.value = Math.min(0.03, 0.005 + mouseRef.current.speed * 0.4);
+      dropMatRef.current.uniforms.uCenter.value.set(x, y);
+      dropMatRef.current.uniforms.uStrength.value = strength;
+      dropMatRef.current.uniforms.uRadius.value = radius;
       dropMatRef.current.uniforms.uAspect.value = simWidth / simHeight;
 
       renderer.setRenderTarget(targetB.current);
@@ -288,6 +341,21 @@ function SimulationPlane({ imageSrc, visibleRef }: { imageSrc: string; visibleRe
       const temp = targetA.current;
       targetA.current = targetB.current;
       targetB.current = temp;
+    };
+
+    // 1. Inject queued drops, then a drop if the mouse moved
+    while (dropsRef.current.length > 0) {
+      const drop = dropsRef.current.pop();
+      if (drop) injectDrop(drop.x, drop.y, drop.strength, drop.radius);
+    }
+
+    if (mouseRef.current.down) {
+      injectDrop(
+        mouseRef.current.x,
+        mouseRef.current.y,
+        Math.min(0.03, 0.005 + mouseRef.current.speed * 0.4),
+        0.03,
+      );
 
       mouseRef.current.speed *= 0.8;
       if (mouseRef.current.speed < 0.0001) {
@@ -337,7 +405,9 @@ function SimulationPlane({ imageSrc, visibleRef }: { imageSrc: string; visibleRe
         uDelta: { value: new THREE.Vector2(1 / simWidth, 1 / simHeight) },
       },
     });
-  }, [texture]);
+  }, [texture, simWidth, simHeight]);
+
+  useEffect(() => () => waterMaterial.dispose(), [waterMaterial]);
 
   return (
     <mesh>
@@ -354,25 +424,29 @@ export default function WaterRipple({ imageSrc }: { imageSrc: string }) {
     "connection" in navigator &&
     (navigator as Navigator & { connection?: { saveData?: boolean } }).connection?.saveData === true;
 
-  // Static image when motion is reduced or the user asked for saving data:
-  // a fullscreen fragment shader at dpr 2 is the heaviest paint on the page.
-  if (prefersReducedMotion || saveData) {
-    return (
-      <div
-        className="absolute inset-0 bg-cover bg-center"
-        style={{ backgroundImage: `url(${imageSrc})` }}
-      />
-    );
-  }
+  // The hero's poster image sits underneath and stays as the whole picture when
+  // motion is reduced or the user asked for saving data: a fullscreen fragment
+  // shader at dpr 2 is the heaviest paint on the page.
+  if (prefersReducedMotion || saveData) return null;
 
   return (
     <WaterRippleCanvas imageSrc={imageSrc} />
   );
 }
 
+function canUseWebGL() {
+  try {
+    return Boolean(document.createElement("canvas").getContext("webgl2"));
+  } catch {
+    return false;
+  }
+}
+
 function WaterRippleCanvas({ imageSrc }: { imageSrc: string }) {
   const wrapRef = useRef<HTMLDivElement | null>(null);
   const visibleRef = useRef(true);
+  const [visible, setVisible] = useState(true);
+  const [failed, setFailed] = useState(() => !canUseWebGL());
   const coarse =
     typeof window !== "undefined" && window.matchMedia("(pointer: coarse)").matches;
 
@@ -383,27 +457,40 @@ function WaterRippleCanvas({ imageSrc }: { imageSrc: string }) {
     const observer = new IntersectionObserver(
       ([entry]) => {
         visibleRef.current = entry.isIntersecting;
+        setVisible(entry.isIntersecting);
       },
       { threshold: 0 }
     );
     observer.observe(el);
     return () => observer.disconnect();
+  }, [failed]);
+
+  // Fade in over the poster once the photo is on the GPU, so there is no flash.
+  const handleReady = useCallback(() => {
+    if (wrapRef.current) {
+      gsap.to(wrapRef.current, { opacity: 1, duration: 0.8, ease: "power2.out" });
+    }
   }, []);
 
+  if (failed) return null;
+
   return (
-    <div ref={wrapRef} className="absolute inset-0 h-full w-full overflow-hidden pointer-events-none">
+    <div ref={wrapRef} className="absolute inset-0 h-full w-full overflow-hidden pointer-events-none opacity-0">
       <Canvas
+        onCreated={({ gl }) => {
+          gl.domElement.addEventListener("webglcontextlost", () => setFailed(true));
+        }}
         // Low-power + no MSAA on touch GPUs: the water shader is per-pixel
         // math, not geometry edges, so antialias buys nothing and forces the
         // high-power GPU on phones. dpr caps at 1.5 on coarse pointers.
         gl={{ antialias: !coarse, alpha: false, powerPreference: coarse ? "low-power" : "high-performance" }}
         camera={{ position: [0, 0, 5], fov: 50, near: 0.1, far: 100 }}
         dpr={coarse ? [1, 1.5] : [1, 2]}
-        frameloop="always"
+        frameloop={visible ? "always" : "never"}
         className="h-full w-full"
       >
         <color attach="background" args={["#0a0a0a"]} />
-        <SimulationPlane imageSrc={imageSrc} visibleRef={visibleRef} />
+        <SimulationPlane imageSrc={imageSrc} visibleRef={visibleRef} onReady={handleReady} />
       </Canvas>
     </div>
   );

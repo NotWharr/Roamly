@@ -1,341 +1,155 @@
-import { useEffect, useRef, useState, type CSSProperties } from "react";
-import "@/styles/work-process.css";
+"use client";
 
-export type ProcessStep = {
+import { useEffect, useRef } from "react";
+import gsap from "gsap";
+import { ScrollTrigger } from "gsap/ScrollTrigger";
+
+import AnimatedText from "@/components/ui/AnimatedText";
+import Reveal from "@/components/ui/Reveal";
+
+if (typeof window !== "undefined") {
+  gsap.registerPlugin(ScrollTrigger);
+}
+
+type ProcessStep = {
   step: string;
   title: string;
   description: string;
-  features: string[];
 };
 
-type RouteSegment = {
-  d: string;
-  start: { x: number; y: number };
-  end: { x: number; y: number };
-};
+const TIDE_LINE = `M0 20 Q50 -8 100 20 ${Array.from(
+  { length: 11 },
+  (_, index) => `T${(index + 2) * 100} 20`,
+).join(" ")}`;
 
 /**
- * The five steps of a day with a Roamly guide.
+ * The five beats of a day with a Roamly guide.
  *
- * Written around what actually happens on a Grenada excursion rather than a
- * generic booking funnel: you are picked up, you walk in, you eat something
- * local, you get dropped back. The step numbers stay because the route line
- * between the cards is drawn from them.
+ * Five short things, read in order. On wide screens one tide line runs over
+ * them and is drawn by scrolling, so the line is the day passing. Without
+ * motion it is simply already drawn, and phones get a plain ruled list.
  */
 const STEPS: ProcessStep[] = [
   {
     step: "01",
     title: "We pick you up",
     description:
-      "Your guide texts you the morning of, then collects you from your hotel or a point in St George's. If you are staying on Carriacou or Petite Martinique, we meet you at the jetty.",
-    features: [
-      "Hotel or central St George's pickup",
-      "Jetty pickup for the sister islands",
-      "A text the night before with the name and number",
-    ],
+      "Your guide texts you the morning of, then collects you from your hotel or a point in St George's.",
   },
   {
     step: "02",
     title: "We walk you in",
     description:
-      "Gradients are marked before anyone sets off. Most of the island's trails are short but the ground is wet, muddy, or uneven far more often than the walk is hard.",
-    features: [
-      "Trails walked first to set a fair gradient",
-      "Boots and walking poles available on board",
-      "Swimming and turn-around points agreed up front",
-    ],
+      "Trails are walked before you arrive. Gradients and turn-around points are agreed up front.",
   },
   {
     step: "03",
     title: "You eat something local",
     description:
-      "Lunch is part of most of the days, not an extra. Rice and peas, oil-down, callaloo, or whatever the cook had going that morning, with a stop wherever there is a reason to stop.",
-    features: [
-      "Lunch cooked that morning, not bought",
-      "Vegetarian and vegan on every tour",
-      "Spice levels talked through before the day",
-    ],
+      "Lunch is cooked that morning, with vegetarian and vegan plates on every tour.",
   },
   {
     step: "04",
     title: "You get the small stuff",
     description:
-      "Rum punch at the plantation, nutmeg, cocoa, a reef guide who knows which current is running. This is the part people mention afterwards, and it is not in the brochure.",
-    features: [
-      "Nutmeg, cocoa and rum tastings on the inland days",
-      "Reef briefings before you are in the water",
-      "Photos from your guide, sent the same evening",
-    ],
+      "Nutmeg, cocoa, a reef briefing from someone who knows the water, and photos the same evening.",
   },
   {
     step: "05",
     title: "We drop you back",
     description:
-      "Back at your door with time to swim before dinner. If you want to extend the day, say so in the morning rather than afterwards, because the guide's route is already set.",
-    features: [
-      "Back at your hotel with the rest of the evening free",
-      "Same-day changes agreed in the morning",
-      "Cash or card, and a receipt either way",
-    ],
+      "Back at your hotel with the evening free. Same-day changes are agreed in the morning.",
   },
 ];
 
 export default function WorkProcess({ steps = STEPS }: { steps?: ProcessStep[] }) {
-  const sectionRef = useRef<HTMLElement>(null);
-  const stageRef = useRef<HTMLDivElement>(null);
-  const cardRefs = useRef<(HTMLElement | null)[]>([]);
-  const pathRefs = useRef<(SVGPathElement | null)[]>([]);
-  const [segments, setSegments] = useState<RouteSegment[]>([]);
-  const [visibleCards, setVisibleCards] = useState<Record<number, boolean>>({});
+  const tideRef = useRef<SVGPathElement | null>(null);
 
   useEffect(() => {
-    const observer = new IntersectionObserver(
-      (entries) => {
-        for (const entry of entries) {
-          if (!entry.isIntersecting) continue;
-          const index = Number((entry.target as HTMLElement).dataset["cardIndex"]);
-          setVisibleCards((prev) => ({ ...prev, [index]: true }));
-        }
-      },
-      { threshold: 0.2 },
-    );
-
-    for (const card of cardRefs.current) if (card) observer.observe(card);
-    return () => observer.disconnect();
-  }, [steps]);
-
-  // The connector is drawn between card centres, so it has to be measured and
-  // remeasured whenever the cards move.
-  useEffect(() => {
-    const stage = stageRef.current;
-    if (!stage) return;
-
-    const measure = () => {
-      const stageRect = stage.getBoundingClientRect();
-      const next: RouteSegment[] = [];
-
-      for (let i = 0; i < cardRefs.current.length - 1; i += 1) {
-        const current = cardRefs.current[i];
-        const following = cardRefs.current[i + 1];
-        if (!current || !following) continue;
-
-        const a = current.getBoundingClientRect();
-        const b = following.getBoundingClientRect();
-        const start = {
-          x: a.left + a.width / 2 - stageRect.left,
-          y: a.bottom - stageRect.top,
-        };
-        const end = {
-          x: b.left + b.width / 2 - stageRect.left,
-          y: b.top - stageRect.top,
-        };
-        const bend = Math.max(70, (end.y - start.y) * 0.5);
-        next.push({
-          d: `M ${start.x} ${start.y} C ${start.x} ${start.y + bend}, ${end.x} ${end.y - bend}, ${end.x} ${end.y}`,
-          start,
-          end,
-        });
-      }
-
-      setSegments(next);
-    };
-
-    const observer = new ResizeObserver(measure);
-    observer.observe(stage);
-    for (const card of cardRefs.current) if (card) observer.observe(card);
-    measure();
-    return () => observer.disconnect();
-  }, [steps]);
-
-  /**
-   * The route fills in as the section is scrolled through.
-   *
-   * SKILL 5.D bans `window.addEventListener("scroll")`, and rightly: it runs
-   * on every scroll frame with no batching. A rAF loop that is scheduled only
-   * while the section is on screen does the same work without the listener,
-   * and it stops entirely when the section is not in view.
-   */
-  useEffect(() => {
-    const section = sectionRef.current;
-    const paths = pathRefs.current.filter(
-      (path): path is SVGPathElement => Boolean(path),
-    );
-    if (!section || paths.length === 0) return;
-
-    const reduceMotion = window.matchMedia(
-      "(prefers-reduced-motion: reduce)",
-    ).matches;
-
-    const lengths = paths.map((path) => path.getTotalLength());
-    paths.forEach((path, i) => {
-      const length = lengths[i] ?? 0;
-      path.style.strokeDasharray = `${length}`;
-      path.style.strokeDashoffset = `${length}`;
-    });
-
-    if (reduceMotion) return;
-
-    let frame: number | null = null;
-
-    const draw = () => {
-      frame = null;
-      const rect = section.getBoundingClientRect();
-      if (rect.bottom < 0 || rect.top > window.innerHeight) return;
-
-      const travel = Math.max(1, rect.height - window.innerHeight * 0.55);
-      const progress = Math.min(
-        1,
-        Math.max(0, (window.innerHeight * 0.72 - rect.top) / travel),
+    const media = gsap.matchMedia();
+    media.add("(prefers-reduced-motion: no-preference) and (min-width: 1024px)", () => {
+      gsap.fromTo(
+        tideRef.current,
+        { strokeDashoffset: 1 },
+        {
+          strokeDashoffset: 0,
+          ease: "none",
+          scrollTrigger: {
+            trigger: tideRef.current,
+            start: "top 85%",
+            end: "top 35%",
+            scrub: true,
+          },
+        },
       );
-
-      paths.forEach((path, i) => {
-        const local = Math.min(1, Math.max(0, progress * paths.length - i));
-        const length = lengths[i] ?? 0;
-        path.style.strokeDashoffset = `${length * (1 - local)}`;
-      });
-    };
-
-    const onScroll = () => {
-      if (frame === null) frame = requestAnimationFrame(draw);
-    };
-
-    draw();
-    window.addEventListener("scroll", onScroll, { passive: true });
-    window.addEventListener("resize", onScroll);
-
-    return () => {
-      window.removeEventListener("scroll", onScroll);
-      window.removeEventListener("resize", onScroll);
-      if (frame !== null) cancelAnimationFrame(frame);
-    };
-  }, [segments]);
+    });
+    return () => media.revert();
+  }, []);
 
   return (
-    <main className="process-page rl-theme rl-theme-reef">
-      <section
-        ref={sectionRef}
-        className="process-shell"
-        aria-labelledby="process-title"
-      >
-        <header className="process-header">
-          <div className="process-kicker">
-            <span className="process-kicker-mark" aria-hidden="true" />
-            <span>How a day with us runs</span>
-            <span className="process-kicker-rule" aria-hidden="true" />
-            <span className="process-station-count">{steps.length} steps</span>
-          </div>
+    <section
+      data-water
+      aria-labelledby="process-title"
+      className="rl-deep py-[var(--rl-section-y)]"
+    >
+      <div className="mx-auto w-full max-w-[1400px] px-[var(--rl-gutter)]">
+        <div className="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
+          <AnimatedText
+            as="h2"
+            id="process-title"
+            mode="lines"
+            className="rl-display max-w-[15ch] text-[clamp(2.75rem,7vw,6.5rem)] tracking-[-0.05em] leading-[0.98]"
+          >
+            A day with a guide, start to finish.
+          </AnimatedText>
 
-          <h2 id="process-title">Five steps, and none of them a queue.</h2>
-          <p>
-            A Roamly day is a small group, one guide who lives here, and a route
-            that bends around the weather rather than against it.
-          </p>
-        </header>
-
-        <div ref={stageRef} className="process-stage">
-          <svg className="process-route" width="100%" height="100%" aria-hidden="true">
-            {segments.map((segment, index) => (
-              <g key={`${segment.d}-${index}`}>
-                <path className="process-route-guide" d={segment.d} />
-                <path
-                  ref={(node) => {
-                    pathRefs.current[index] = node;
-                  }}
-                  className="process-route-progress"
-                  d={segment.d}
-                />
-                <circle
-                  className="process-route-port"
-                  cx={segment.start.x}
-                  cy={segment.start.y}
-                  r="7"
-                />
-                <circle
-                  className="process-route-port"
-                  cx={segment.end.x}
-                  cy={segment.end.y}
-                  r="7"
-                />
-                <circle
-                  className="process-route-core"
-                  cx={segment.end.x}
-                  cy={segment.end.y}
-                  r="3"
-                />
-              </g>
-            ))}
-          </svg>
-
-          <div className="process-grid">
-            {steps.map((item, index) => {
-              const featured = index === 1;
-              const isVisible = visibleCards[index];
-
-              return (
-                <article
-                  key={item.step}
-                  data-card-index={index}
-                  ref={(node) => {
-                    cardRefs.current[index] = node;
-                  }}
-                  className={`process-card process-card-${index + 1}${
-                    featured ? " is-featured" : ""
-                  }${isVisible ? " is-animated" : ""}`}
-                >
-                  <div
-                    className="process-card-top animate-line"
-                    style={{ "--line-index": 0 } as CSSProperties}
-                  >
-                    <span className="process-step-number">{item.step}</span>
-                    <span className="process-station-tag">
-                      {index === 0
-                        ? "Before"
-                        : index === steps.length - 1
-                          ? "After"
-                          : "On the day"}
-                    </span>
-                  </div>
-
-                  <h3
-                    className="animate-line"
-                    style={{ "--line-index": 1 } as CSSProperties}
-                  >
-                    {item.title}
-                  </h3>
-
-                  <p
-                    className="animate-line"
-                    style={{ "--line-index": 2 } as CSSProperties}
-                  >
-                    {item.description}
-                  </p>
-
-                  <div
-                    className="process-card-divider animate-line"
-                    style={{ "--line-index": 3 } as CSSProperties}
-                  />
-
-                  <ul className="process-feature-list">
-                    {item.features.map((feature) => (
-                      <li
-                        key={feature}
-                        className="animate-line"
-                        style={{ "--line-index": 4 } as CSSProperties}
-                      >
-                        <span
-                          className="process-feature-dash"
-                          aria-hidden="true"
-                        />
-                        <span>{feature}</span>
-                      </li>
-                    ))}
-                  </ul>
-                </article>
-              );
-            })}
-          </div>
+          <AnimatedText
+            as="p"
+            mode="lines"
+            delay={0.1}
+            className="max-w-[36ch] text-base leading-relaxed text-[var(--rl-mute)] sm:text-lg lg:pb-3"
+          >
+            A small group, one guide who lives here, and a route that bends
+            around the weather rather than against it.
+          </AnimatedText>
         </div>
-      </section>
-    </main>
+
+        <svg
+          aria-hidden="true"
+          viewBox="0 0 1200 40"
+          fill="none"
+          className="mt-20 hidden w-full lg:block"
+        >
+          <path
+            ref={tideRef}
+            d={TIDE_LINE}
+            pathLength={1}
+            stroke="currentColor"
+            strokeWidth={1.5}
+            strokeLinecap="round"
+            strokeDasharray={1}
+          />
+        </svg>
+
+        <ol className="mt-12 grid grid-cols-1 lg:mt-8 lg:grid-cols-5 lg:gap-8">
+          {steps.map((step, index) => (
+            <li
+              key={step.step}
+              className="border-t border-[var(--rl-line)] py-6 lg:border-t-0 lg:py-0"
+            >
+              <Reveal delay={index * 0.07} y={24}>
+                <span className="text-sm font-semibold tabular-nums text-[var(--rl-accent-text)]">
+                  {step.step}
+                </span>
+                <h3 className="rl-display mt-2 text-[1.6rem] leading-[1.08]">{step.title}</h3>
+                <p className="mt-3 text-[0.9375rem] leading-relaxed text-[var(--rl-mute)]">
+                  {step.description}
+                </p>
+              </Reveal>
+            </li>
+          ))}
+        </ol>
+      </div>
+    </section>
   );
 }

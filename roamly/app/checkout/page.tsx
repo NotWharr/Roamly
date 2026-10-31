@@ -4,13 +4,13 @@ import { Suspense, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 
-import BackLink from "@/components/layout/BackLink";
 import CheckoutForm from "@/components/checkout/CheckoutForm";
 import OrderSummary from "@/components/checkout/OrderSummary";
 import Confirmation from "@/components/checkout/Confirmation";
 import { readableDate } from "@/lib/calendar";
 import { RULES, quote } from "@/lib/checkout";
 import { findTour } from "@/lib/tours";
+import PageBanner from "@/components/layout/PageBanner";
 import { rlFonts } from "@/lib/roamlyFonts";
 
 import "@/styles/roamly.css";
@@ -108,22 +108,14 @@ function Checkout() {
 
   return (
     <main
-      className={`rl-root rl-on-ink rl-z-content relative flex min-h-dvh flex-col px-[length:var(--rl-gutter)] ${rlFonts}`}
+      className={`rl-root rl-on-ink rl-z-content relative flex min-h-dvh flex-col ${rlFonts}`}
     >
-      <BackLink href="/booking">Back to booking</BackLink>
+      <PageBanner backHref="/booking" backLabel="Back to booking" title="Payment" still>
+        Who is coming, and how you would like to pay. We hold your place for 24
+        hours from here.
+      </PageBanner>
 
-      <div className="mx-auto flex w-full max-w-5xl flex-1 flex-col pb-16 pt-32 sm:pt-36">
-        <header className="max-w-[44ch]">
-          <h1 className="rl-display text-[clamp(2.25rem,8vw,3.5rem)]">
-            Payment
-          </h1>
-
-          <p className="mt-4 text-base leading-relaxed text-[var(--rl-mute)]">
-            Who is coming, and how you would like to pay. We hold your place
-            for 24 hours from here.
-          </p>
-        </header>
-
+      <div className="mx-auto flex w-full max-w-[1400px] flex-1 flex-col px-[var(--rl-gutter)] pb-16">
         <div className="mt-10 grid gap-8 sm:mt-12 lg:grid-cols-[minmax(0,1fr)_22rem] lg:gap-10">
           <CheckoutForm
             tourTitle={tour.name}
@@ -131,7 +123,6 @@ function Checkout() {
             guests={guests}
             money={money}
             values={values}
-            errors={errors}
             showError={showError}
             setValue={setValue}
             paying={paying}

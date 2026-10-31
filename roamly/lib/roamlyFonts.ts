@@ -1,5 +1,6 @@
 import { Bricolage_Grotesque, Figtree } from "next/font/google";
 
+/* Self-hosted through next/font and exposed as --font-rl-* CSS variables. */
 const display = Bricolage_Grotesque({
   subsets: ["latin"],
   variable: "--font-rl-display",
@@ -12,5 +13,4 @@ const text = Figtree({
   display: "swap",
 });
 
-/** Put on the root element of each redesigned section (variables are scoped, never global). */
 export const rlFonts = `${display.variable} ${text.variable}`;

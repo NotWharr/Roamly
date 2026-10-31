@@ -1,7 +1,7 @@
 "use client";
 
-import SocialLinks from "@/components/design/SocialLinks";
-import BackLink from "@/components/layout/BackLink";
+import PageBanner from "@/components/layout/PageBanner";
+import SiteFooter from "@/components/layout/SiteFooter";
 
 import { rlFonts } from "@/lib/roamlyFonts";
 
@@ -140,24 +140,16 @@ const CLAUSES: Clause[] = [
 export default function TermsPage() {
   return (
     <main
-      className={`rl-root rl-on-ink rl-z-content relative flex min-h-dvh flex-col px-[length:var(--rl-gutter)] ${rlFonts}`}
+      className={`rl-root rl-on-ink rl-z-content relative flex min-h-dvh flex-col ${rlFonts}`}
     >
-      <BackLink href="/contact">Back to contact</BackLink>
+      <PageBanner backHref="/contact" backLabel="Back to contact" title="Terms and conditions" still>
+        {UPDATED}
+      </PageBanner>
 
-      <article className="mx-auto w-full max-w-3xl flex-1 pb-16 pt-32 sm:pt-36">
-        <header>
-          <span className="rl-badge">Legal</span>
-
-          <h1 className="rl-display mt-5 text-[clamp(2.25rem,8vw,3.5rem)]">
-            Terms and Conditions
-          </h1>
-
-          <p className="mt-4 text-sm text-[var(--rl-mute)]">{UPDATED}</p>
-
-          <p className="mt-6 max-w-[58ch] text-base leading-relaxed text-[var(--rl-mute)]">
-            {INTRO}
-          </p>
-        </header>
+      <article className="mx-auto w-full max-w-[1400px] flex-1 px-[var(--rl-gutter)] pb-16 pt-12 sm:pt-16 [&>*]:max-w-3xl">
+        <p className="max-w-[58ch] text-base leading-relaxed text-[var(--rl-mute)] sm:text-lg">
+          {INTRO}
+        </p>
 
         <nav aria-label="On this page" className="mt-12">
           <h2 className="rl-label text-[var(--rl-mute)]">On this page</h2>
@@ -167,7 +159,7 @@ export default function TermsPage() {
               <li key={clause.id}>
                 <a
                   href={`#${clause.id}`}
-                  className="flex min-h-[44px] items-center rounded-lg py-2 text-sm text-[var(--rl-mute)] transition-colors duration-200 hover:text-[var(--rl-accent-text)]"
+                  className="flex min-h-[44px] items-center rounded-lg py-2 text-sm text-[var(--rl-mute)] hover:text-[var(--rl-accent-text)]"
                 >
                   {clause.title}
                 </a>
@@ -226,7 +218,7 @@ export default function TermsPage() {
         {/* Questions */}
         <section
           aria-labelledby="terms-help"
-          className="mt-16 rounded-[4px] border border-[var(--rl-line)] bg-[var(--rl-ink-2)] p-8"
+          className="mt-16 rounded-[16px] border border-[var(--rl-line)] bg-[var(--rl-ink-2)] p-8"
         >
           <h2 id="terms-help" className="rl-display text-xl">
             Something unclear?
@@ -240,11 +232,9 @@ export default function TermsPage() {
             and we will explain any part of this in plain terms.
           </p>
         </section>
-
-        <div className="mt-16 border-t border-[var(--rl-line)] pt-12">
-          <SocialLinks />
-        </div>
       </article>
+
+      <SiteFooter />
     </main>
   );
 }
